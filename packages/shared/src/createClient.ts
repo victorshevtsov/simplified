@@ -30,11 +30,12 @@ export const createClient = async (privateKey: string, options: CreateClientOpti
     }
   }
 
-  if (options.externalIp) {
-    config.network = {
-      externalIp: options.externalIp
-    }
-  }
+  // Streamr v8.1.0 does not have externalIp option
+  // if (options.externalIp) {
+  //   config.network = {
+  //     externalIp: options.externalIp
+  //   }
+  // }
 
   const client = new StreamrClient(config);
   logger.info('StreamrClient created:', { address: await client.getAddress() });

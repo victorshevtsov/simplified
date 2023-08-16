@@ -16,8 +16,9 @@
   "license": "ISC",
   "dependencies": {
     "@simplified/shared": "^1.0.0",
+    "@streamr/utils": "^8.1.0",
     "commander": "^11.0.0",
     "dotenv": "^16.3.1",
-    "streamr-client": "^8.5.5"
+    "streamr-client": "^8.1.0"
   }
 }
