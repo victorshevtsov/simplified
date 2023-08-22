@@ -56,17 +56,20 @@ export class Recovery {
 	public async start(
 		onSystemMessage: (systemMessage: SystemMessage, metadata: MessageMetadata) => Promise<void>
 	) {
-		logger.info('Starting Recovery...');
-
 		this.onSystemMessage = onSystemMessage;
 		this.subscription = await this.client.subscribe(this.recoveryStream, this.onRecoveryMessage.bind(this));
 
 		logger.info(`Waiting for ${DELAY}ms to form peer connections...`);
 		setTimeout(() => this.sendRecoveryRequest(), DELAY);
+
+		logger.info('Started');
 	}
 
 	public async stop() {
 		await this.subscription?.unsubscribe();
+		this.subscription = undefined;
+
+		logger.info('Stopped');
 	}
 
 	public get progress(): RecoveryProgress {
