@@ -164,7 +164,7 @@ export class Recovery {
 
 				if (this.progress.isComplete) {
 					logger.info('Successfully complete Recovery');
-					await this.stop();
+					setImmediate(this.stop.bind(this));
 				}
 				break;
 			}
