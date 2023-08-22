@@ -1,4 +1,13 @@
+import { toEthereumAddress } from '@streamr/utils';
 import { Option } from 'commander';
+
+export const baseAddress = new Option(
+	'--base-address <address>',
+	'Ethereum Address of the Streams'
+)
+	.env('BASE_ADDRESS')
+	.makeOptionMandatory()
+	.argParser((value) => toEthereumAddress(value));
 
 export const devNetworkOption = new Option(
 	'--dev-network',
@@ -18,11 +27,4 @@ export const privateKeyOption = new Option(
 	'Private Key'
 )
 	.env('PRIVATE_KEY')
-	.makeOptionMandatory();
-
-export const streamIdOption = new Option(
-	'--stream-id <stream-id>',
-	'Stream ID'
-)
-	.env('STREAM_ID')
 	.makeOptionMandatory();

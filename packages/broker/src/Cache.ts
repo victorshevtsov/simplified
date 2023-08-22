@@ -2,30 +2,22 @@ import { SystemMessage, SystemMessageType } from '@simplified/protocol';
 import { BroadbandSubscriber } from '@simplified/shared';
 import { Logger } from '@streamr/utils';
 import { EventEmitter } from 'events';
-import { MessageMetadata, Stream, StreamrClient } from 'streamr-client';
+import { MessageMetadata } from 'streamr-client';
 
 const logger = new Logger(module);
 
 const LIMIT = 10000;
 
 export class Cache extends EventEmitter {
-	private subscriber: BroadbandSubscriber;
-
 	private records: {
 		message: SystemMessage;
 		metadata: MessageMetadata;
 	}[] = [];
 
 	constructor(
-		private readonly client: StreamrClient,
-		private readonly stream: Stream,
+		private readonly subscriber: BroadbandSubscriber,
 	) {
 		super();
-
-		this.subscriber = new BroadbandSubscriber(
-			this.client,
-			this.stream
-		);
 	}
 
 	public async start() {

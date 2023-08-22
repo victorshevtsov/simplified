@@ -5,13 +5,13 @@ import {
 	SystemMessage,
 	SystemMessageType,
 } from '@simplified/protocol';
-import { BroadbandPublisher, BroadbandSubscriber } from '@simplified/shared';
 import { Logger } from '@streamr/utils';
 import {
 	EthereumAddress,
 	MessageMetadata,
 	Stream,
-	StreamrClient
+	StreamrClient,
+	Subscription
 } from 'streamr-client';
 import { v4 as uuid } from 'uuid';
 
@@ -40,31 +40,33 @@ const logger = new Logger(module);
 
 export class Recovery {
 	private requestId?: string;
-	private publisher: BroadbandPublisher
-	private subscriber: BroadbandSubscriber;
+	private subscription?: Subscription;
+	private onSystemMessage?: (systemMessage: SystemMessage, metadata: MessageMetadata) => Promise<void>;
 
 	private progresses: Map<EthereumAddress, RecoveryProgress> = new Map();
 
 	constructor(
 		private readonly client: StreamrClient,
-		private readonly stream: Stream,
-		private readonly onSystemMessage: (systemMessage: SystemMessage, metadata: MessageMetadata) => Promise<void>
+		private readonly systemStream: Stream,
+		private readonly recoveryStream: Stream,
 	) {
-		this.publisher = new BroadbandPublisher(this.client, this.stream);
-		this.subscriber = new BroadbandSubscriber(this.client, this.stream);
+		//
 	}
 
-	public async start() {
+	public async start(
+		onSystemMessage: (systemMessage: SystemMessage, metadata: MessageMetadata) => Promise<void>
+	) {
 		logger.info('Starting Recovery...');
 
-		await this.subscriber.subscribe(this.onMessage.bind(this));
+		this.onSystemMessage = onSystemMessage;
+		this.subscription = await this.client.subscribe(this.recoveryStream, this.onRecoveryMessage.bind(this));
 
 		logger.info(`Waiting for ${DELAY}ms to form peer connections...`);
 		setTimeout(() => this.sendRecoveryRequest(), DELAY);
 	}
 
 	public async stop() {
-		await this.subscriber.unsubscribe();
+		await this.subscription?.unsubscribe();
 	}
 
 	public get progress(): RecoveryProgress {
@@ -90,14 +92,14 @@ export class Recovery {
 		const recoveryRequest = new RecoveryRequest({ requestId: this.requestId });
 
 		logger.info(`Sending RecoveryRequest ${JSON.stringify({ requestId: recoveryRequest.requestId })}`);
-		await this.publisher.publish(recoveryRequest.serialize());
+		await this.client.publish(this.systemStream, recoveryRequest.serialize());
 
 		for (const broker of BROKERS) {
 			this.progresses.set(broker, { isComplete: false });
 		}
 	}
 
-	private async onMessage(
+	private async onRecoveryMessage(
 		content: unknown,
 		metadata: MessageMetadata
 	): Promise<void> {
@@ -129,7 +131,7 @@ export class Recovery {
 				);
 
 				for await (const [msg, msgMetadata] of recoveryResponse.payload) {
-					await this.onSystemMessage(msg, msgMetadata as MessageMetadata);
+					await this.onSystemMessage!(msg, msgMetadata as MessageMetadata);
 					progress.timestamp = metadata.timestamp;
 				}
 

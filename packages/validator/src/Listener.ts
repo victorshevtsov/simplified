@@ -1,32 +1,29 @@
 import { SystemMessage, SystemMessageType } from '@simplified/protocol';
 import { BroadbandSubscriber } from '@simplified/shared';
-import { MessageMetadata, Stream, StreamrClient } from 'streamr-client';
+import { Logger } from '@streamr/utils';
+import { MessageMetadata } from 'streamr-client';
 import { Recovery } from './Recovery';
 
-export class Listener {
-  private readonly subscriber: BroadbandSubscriber;
-  private readonly recovery: Recovery;
+const logger = new Logger(module);
 
+export class Listener {
   constructor(
-    private readonly client: StreamrClient,
-    private readonly stream: Stream,
+    private readonly sensorSubscriber: BroadbandSubscriber,
+    private readonly recovery: Recovery,
   ) {
-    this.subscriber = new BroadbandSubscriber(this.client, this.stream);
-    this.recovery = new Recovery(
-      this.client,
-      this.stream,
-      this.onSystemMessage.bind(this)
-    );
+    //
   }
 
   public async start() {
-    await this.subscriber.subscribe(this.onMessage.bind(this));
-
-    await this.recovery.start();
+    logger.info('Started');
+    await this.sensorSubscriber.subscribe(this.onMessage.bind(this));
+    await this.recovery.start(this.onSystemMessage);
   }
 
   public async stop() {
     await this.recovery.stop();
+    await this.sensorSubscriber.unsubscribe();
+    logger.info('Stopped');
   }
 
   private async onMessage(
@@ -46,6 +43,6 @@ export class Listener {
     systemMessage: SystemMessage,
     metadata: MessageMetadata
   ): Promise<void> {
-    // logger.info('onSystemMessage %s', JSON.stringify(systemMessage));
+    // logger.info('onSystemMessage', { systemMessage });
   }
 }

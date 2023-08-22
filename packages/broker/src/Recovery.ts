@@ -1,7 +1,6 @@
 import { RecoveryComplete, RecoveryRequest, RecoveryResponse, SystemMessage, SystemMessageType } from '@simplified/protocol';
-import { BroadbandPublisher, BroadbandSubscriber } from '@simplified/shared';
 import { Logger } from '@streamr/utils';
-import { MessageMetadata, Stream, StreamrClient } from 'streamr-client';
+import { MessageMetadata, Stream, StreamrClient, Subscription } from 'streamr-client';
 import { Cache } from './Cache';
 
 const PAYLOAD_LIMIT = 500;
@@ -9,26 +8,23 @@ const PAYLOAD_LIMIT = 500;
 const logger = new Logger(module);
 
 export class Recovery {
-	private readonly subscriber: BroadbandSubscriber;
+	private subscription?: Subscription;
 
 	constructor(
 		private readonly client: StreamrClient,
-		private readonly stream: Stream,
-		private readonly publisher: BroadbandPublisher,
+		private readonly systemStream: Stream,
+		private readonly recoveryStream: Stream,
 		private readonly cache: Cache,
 	) {
-		this.subscriber = new BroadbandSubscriber(
-			this.client,
-			this.stream
-		);
+		//
 	}
 
 	public async start() {
-		await this.subscriber.subscribe(this.onMessage.bind(this));
+		this.subscription = await this.client.subscribe(this.systemStream, this.onMessage.bind(this));
 	}
 
 	public async stop() {
-		await this.subscriber.unsubscribe();
+		this.subscription?.unsubscribe();
 	}
 
 	private async onMessage(message: unknown) {
@@ -75,7 +71,7 @@ export class Recovery {
 		const recoveryResponse = new RecoveryResponse({ requestId, seqNum, payload });
 		const recoveryResponseSeralized = recoveryResponse.serialize();
 
-		await this.publisher.publish(recoveryResponseSeralized);
+		await this.recoveryStream.publish(recoveryResponseSeralized);
 		logger.info(
 			'Published RecoveryResponse',
 			{
@@ -90,7 +86,7 @@ export class Recovery {
 		const recoveryComplete = new RecoveryComplete({ requestId, seqNum });
 		const recoveryCompleteSeralized = recoveryComplete.serialize();
 
-		await this.publisher.publish(recoveryCompleteSeralized);
+		await this.recoveryStream.publish(recoveryCompleteSeralized);
 		logger.info(
 			'Published RecoveryComplete',
 			{

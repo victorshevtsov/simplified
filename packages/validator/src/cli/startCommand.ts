@@ -1,12 +1,15 @@
-import { CreateClientOptions, createClient } from '@simplified/shared';
-import { Logger } from '@streamr/utils';
+import { BroadbandSubscriber, CreateClientOptions, createClient } from '@simplified/shared';
+import { EthereumAddress, Logger } from '@streamr/utils';
 import { Command } from 'commander';
+import { Listener } from '../Listener';
+import { Recovery } from '../Recovery';
 import { Validator } from '../Validator';
-import { devNetworkOption, externalIpOption, privateKeyOption, streamIdOption } from './options';
+import { baseAddress, devNetworkOption, externalIpOption, privateKeyOption } from './options';
 
 const logger = new Logger(module);
 
 interface Options {
+	baseAddress: EthereumAddress;
 	devNetwork: boolean;
 	externalIp: string;
 	privateKey: string;
@@ -15,21 +18,33 @@ interface Options {
 
 export const startCommand = new Command('start')
 	.description('Start Broker')
+	.addOption(baseAddress)
 	.addOption(devNetworkOption)
 	.addOption(externalIpOption)
 	.addOption(privateKeyOption)
-	.addOption(streamIdOption)
 	.action(async (options: Options) => {
-		logger.info('Starting Validator...');
+		logger.info('Creating Validator...');
 
 		const createClientOptions: CreateClientOptions = {
 			devNetwork: options.devNetwork,
 			externalIp: options.externalIp,
 		}
 
-		const client = await createClient(options.privateKey, createClientOptions);
-		const stream = await client.getStream(options.streamId);
+		const systemStreamId = `${options.baseAddress.toString()}/system`;
+		const sensorStreamId = `${options.baseAddress.toString()}/sensor`;
+		const recoveryStreamId = `${options.baseAddress.toString()}/recovery`;
 
-		const validator = new Validator(client, stream);
+		const client = await createClient(options.privateKey, createClientOptions);
+
+		const systemStream = await client.getStream(systemStreamId);
+		const sensorStream = await client.getStream(sensorStreamId);
+		const recoveryStream = await client.getStream(recoveryStreamId);
+
+		const sensorSubscriber = new BroadbandSubscriber(client, sensorStream);
+
+		const recovery = new Recovery(client, systemStream, recoveryStream);
+		const listener = new Listener(sensorSubscriber, recovery);
+
+		const validator = new Validator(listener);
 		await validator.start();
 	});
