@@ -21,10 +21,14 @@ export class Recovery {
 
 	public async start() {
 		this.subscription = await this.client.subscribe(this.systemStream, this.onMessage.bind(this));
+
+		logger.info('Started');
 	}
 
 	public async stop() {
 		this.subscription?.unsubscribe();
+
+		logger.info('Stopped');
 	}
 
 	private async onMessage(message: unknown) {

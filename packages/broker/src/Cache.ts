@@ -21,12 +21,14 @@ export class Cache extends EventEmitter {
 	}
 
 	public async start() {
-		logger.info('Started');
 		await this.subscriber.subscribe(this.onMessage.bind(this));
+
+		logger.info('Started');
 	}
 
 	public async stop() {
 		await this.subscriber.unsubscribe();
+
 		logger.info('Stopped');
 	}
 

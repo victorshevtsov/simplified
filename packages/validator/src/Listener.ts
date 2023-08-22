@@ -15,14 +15,16 @@ export class Listener {
   }
 
   public async start() {
-    logger.info('Started');
     await this.sensorSubscriber.subscribe(this.onMessage.bind(this));
     await this.recovery.start(this.onSystemMessage);
+
+    logger.info('Started');
   }
 
   public async stop() {
     await this.recovery.stop();
     await this.sensorSubscriber.unsubscribe();
+
     logger.info('Stopped');
   }
 
