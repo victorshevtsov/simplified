@@ -37,6 +37,11 @@ interface RecoveryProgress {
 	isComplete: boolean;
 }
 
+interface RecoverySummary {
+	timestamp?: number;
+	isComplete: boolean;
+}
+
 const logger = new Logger(module);
 
 export class Recovery {
@@ -45,6 +50,7 @@ export class Recovery {
 	private onSystemMessage?: (systemMessage: SystemMessage, metadata: MessageMetadata) => Promise<void>;
 
 	private progresses: Map<EthereumAddress, RecoveryProgress> = new Map();
+	private isRestarting: boolean = false;
 
 	constructor(
 		private readonly client: StreamrClient,
@@ -73,35 +79,41 @@ export class Recovery {
 		logger.info('Stopped');
 	}
 
-	public get progress(): RecoveryProgress {
-		const result: RecoveryProgress = {
+	public get progress(): RecoverySummary {
+		if (this.progresses.size === 0) {
+			return { isComplete: false };
+		}
+
+		const summary: RecoverySummary = {
 			timestamp: Number.MAX_SAFE_INTEGER,
-			lastSeqNum: -1,
 			isComplete: true,
 		};
 
 		for (const [_, progress] of this.progresses) {
 			if (progress.timestamp === undefined) {
-				return { isComplete: false, lastSeqNum: -1 };
+				return { isComplete: false };
 			}
 
-			result.timestamp = Math.min(result.timestamp!, progress.timestamp);
-			result.isComplete = result.isComplete && progress.isComplete;
+			summary.timestamp = Math.min(summary.timestamp!, progress.timestamp);
+			summary.isComplete = summary.isComplete && progress.isComplete;
 		}
 
-		return result;
+		return summary;
 	}
 
 	private async sendRecoveryRequest() {
 		this.requestId = uuid();
-		const recoveryRequest = new RecoveryRequest({ requestId: this.requestId });
+		const from = this.progress.timestamp || 0;
+		const to = Date.now();
+		const recoveryRequest = new RecoveryRequest({ requestId: this.requestId, from, to });
 
-		logger.info(`Sending RecoveryRequest ${JSON.stringify({ requestId: recoveryRequest.requestId })}`);
+		logger.info('Sending RecoveryRequest', { requestId: recoveryRequest.requestId, from: recoveryRequest.from, to: recoveryRequest.to });
 		await this.client.publish(this.systemStream, recoveryRequest.serialize());
 
 		for (const broker of BROKERS) {
 			this.progresses.set(broker, { isComplete: false, lastSeqNum: -1 });
 		}
+		this.isRestarting = false;
 	}
 
 	private async onRecoveryMessage(
@@ -119,68 +131,85 @@ export class Recovery {
 			this.progresses.set(metadata.publisherId, progress);
 		}
 
-		switch (systemMessage.messageType) {
-			case SystemMessageType.RecoveryResponse: {
-				const recoveryResponse = systemMessage as RecoveryResponse;
+		try {
+			switch (systemMessage.messageType) {
+				case SystemMessageType.RecoveryResponse: {
+					const recoveryResponse = systemMessage as RecoveryResponse;
 
-				if (recoveryResponse.requestId != this.requestId) {
-					return;
-				}
-
-				logger.info('Processing RecoveryResponse',
-					{
-						publisherId: metadata.publisherId,
-						seqNum: recoveryResponse.seqNum,
-						payloadLength: recoveryResponse.payload.length,
+					if (recoveryResponse.requestId != this.requestId) {
+						return;
 					}
-				);
 
-				if (recoveryResponse.seqNum - progress.lastSeqNum !== 1) {
-					logger.error("RecoveryResponse has unexpected seqNum", { seqNum: recoveryResponse.seqNum })
+					await this.processRecoveryResponse(recoveryResponse, metadata, progress);
 					break;
 				}
+				case SystemMessageType.RecoveryComplete: {
+					const recoveryComplete = systemMessage as RecoveryComplete;
 
-				for await (const [msg, msgMetadata] of recoveryResponse.payload) {
-					await this.onSystemMessage!(msg, msgMetadata as MessageMetadata);
-					progress.timestamp = metadata.timestamp;
-				}
-
-				progress.lastSeqNum = recoveryResponse.seqNum;
-				break;
-			}
-			case SystemMessageType.RecoveryComplete: {
-				const recoveryComplete = systemMessage as RecoveryComplete;
-
-				if (recoveryComplete.requestId != this.requestId) {
-					return;
-				}
-
-				logger.info(
-					'Processing RecoveryComplete',
-					{
-						publisherId: metadata.publisherId,
-						seqNum: recoveryComplete.seqNum,
+					if (recoveryComplete.requestId != this.requestId) {
+						return;
 					}
-				);
 
-				if (recoveryComplete.seqNum - progress.lastSeqNum !== 1) {
-					logger.error("RecoveryComplete has unexpected seqNum", { seqNum: recoveryComplete.seqNum })
+					await this.processRecoveryComplete(recoveryComplete, metadata, progress);
 					break;
 				}
-
-				// if no recovery messages received
-				if (progress.timestamp === undefined) {
-					progress.timestamp = 0;
-				}
-
-				progress.isComplete = true;
-
-				if (this.progress.isComplete) {
-					logger.info('Successfully complete Recovery');
-					setImmediate(this.stop.bind(this));
-				}
-				break;
 			}
+		} catch (error: any) {
+			if (!this.isRestarting) {
+				this.isRestarting = true;
+				logger.warn('Failed to process RecoveryMessage', { message: error.message });
+
+				setTimeout(async () => {
+					await this.sendRecoveryRequest();
+				}, 30 * 1000);
+			}
+		}
+	}
+
+	private async processRecoveryResponse(recoveryResponse: RecoveryResponse, metadata: MessageMetadata, progress: RecoveryProgress) {
+		logger.info('Processing RecoveryResponse',
+			{
+				publisherId: metadata.publisherId,
+				seqNum: recoveryResponse.seqNum,
+				payloadLength: recoveryResponse.payload.length,
+			}
+		);
+
+		if (recoveryResponse.seqNum - progress.lastSeqNum !== 1) {
+			throw new Error(`RecoveryResponse has unexpected seqNum ${JSON.stringify({ seqNum: recoveryResponse.seqNum })}`);
+		}
+
+		for await (const [msg, msgMetadata] of recoveryResponse.payload) {
+			await this.onSystemMessage!(msg, msgMetadata as MessageMetadata);
+			progress.timestamp = msgMetadata.timestamp;
+		}
+
+		progress.lastSeqNum = recoveryResponse.seqNum;
+	}
+
+	private async processRecoveryComplete(recoveryComplete: RecoveryComplete, metadata: MessageMetadata, progress: RecoveryProgress) {
+		logger.info(
+			'Processing RecoveryComplete',
+			{
+				publisherId: metadata.publisherId,
+				seqNum: recoveryComplete.seqNum,
+			}
+		);
+
+		if (recoveryComplete.seqNum - progress.lastSeqNum !== 1) {
+			throw new Error(`RecoveryComplete has unexpected seqNum ${JSON.stringify({ seqNum: recoveryComplete.seqNum })}`);
+		}
+
+		// if no recovery messages received
+		if (progress.timestamp === undefined) {
+			progress.timestamp = 0;
+		}
+
+		progress.isComplete = true;
+
+		if (this.progress.isComplete) {
+			logger.info('Successfully complete Recovery');
+			setImmediate(this.stop.bind(this));
 		}
 	}
 }

@@ -49,7 +49,9 @@ export class Cache extends EventEmitter {
 		}
 	}
 
-	public get(from: number) {
-		return this.records.filter((record) => record.metadata.timestamp >= from);
+	public get(from: number, to: number) {
+		return this.records.filter((record) =>
+			record.metadata.timestamp >= from &&
+			record.metadata.timestamp < to);
 	}
 }

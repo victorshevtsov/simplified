@@ -43,12 +43,15 @@ export class Recovery {
 		);
 
 		setTimeout(async () => {
-			await this.processRequest(recoveryRequest.requestId);
+			await this.processRequest(
+				recoveryRequest.requestId,
+				recoveryRequest.from,
+				recoveryRequest.to);
 		}, 1000)
 	}
 
-	private async processRequest(requestId: string) {
-		const cacheRecords = this.cache.get(0);
+	private async processRequest(requestId: string, from: number, to: number) {
+		const cacheRecords = this.cache.get(from, to);
 
 		let seqNum: number = 0;
 		const payload: [SystemMessage, MessageMetadata][] = [];
