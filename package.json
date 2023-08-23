@@ -14,7 +14,10 @@
     "broker-6": "node ./packages/broker/dist/bin/simplified-broker.js start --private-key bb00000000000000000000000000000000000000000000000000000000000006 --base-address 0xa156eda7dcd689ac725ce9595d4505bf28256454",
     "validator-1": "node ./packages/validator/dist/bin/simplified-validator.js start --private-key cc00000000000000000000000000000000000000000000000000000000000001 --base-address 0xa156eda7dcd689ac725ce9595d4505bf28256454",
     "validator-2": "node ./packages/validator/dist/bin/simplified-validator.js start --private-key cc00000000000000000000000000000000000000000000000000000000000002 --base-address 0xa156eda7dcd689ac725ce9595d4505bf28256454",
-    "validator-3": "node ./packages/validator/dist/bin/simplified-validator.js start --private-key cc00000000000000000000000000000000000000000000000000000000000003 --base-address 0xa156eda7dcd689ac725ce9595d4505bf28256454"
+    "validator-3": "node ./packages/validator/dist/bin/simplified-validator.js start --private-key cc00000000000000000000000000000000000000000000000000000000000003 --base-address 0xa156eda7dcd689ac725ce9595d4505bf28256454",
+    "validator-4": "node ./packages/validator/dist/bin/simplified-validator.js start --private-key cc00000000000000000000000000000000000000000000000000000000000004 --base-address 0xa156eda7dcd689ac725ce9595d4505bf28256454",
+    "validator-5": "node ./packages/validator/dist/bin/simplified-validator.js start --private-key cc00000000000000000000000000000000000000000000000000000000000005 --base-address 0xa156eda7dcd689ac725ce9595d4505bf28256454",
+    "validator-6": "node ./packages/validator/dist/bin/simplified-validator.js start --private-key cc00000000000000000000000000000000000000000000000000000000000006 --base-address 0xa156eda7dcd689ac725ce9595d4505bf28256454"
   },
   "keywords": [],
   "author": "",
