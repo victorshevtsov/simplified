@@ -131,7 +131,12 @@ export class Recovery {
 		await this.client.publish(this.systemStream, recoveryRequest.serialize());
 
 		for (const broker of BROKERS) {
-			this.progresses.set(broker, { isComplete: false, lastSeqNum: -1 });
+			const progress = {
+				...this.progresses.get(broker) || { isComplete: false, lastSeqNum: -1 },
+				isComplete: false,
+				lastSeqNum: -1,
+			}
+			this.progresses.set(broker, progress);
 		}
 
 		this.activityTimeout.start();
