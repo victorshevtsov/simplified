@@ -14,8 +14,11 @@ import {
 	Subscription
 } from 'streamr-client';
 import { v4 as uuid } from 'uuid';
+import { ActivityTimeout } from './ActivityTimeout';
 
-const DELAY = 15 * 1000;
+const START_DELAY = 5 * 1000;
+const RESTART_DELAY = 30 * 1000;
+const ACTIVITY_TIMEOUT = 30 * 1000;
 
 const MESSAGE_TYPES = [
 	SystemMessageType.RecoveryResponse,
@@ -52,12 +55,15 @@ export class Recovery {
 	private progresses: Map<EthereumAddress, RecoveryProgress> = new Map();
 	private isRestarting: boolean = false;
 
+	private activityTimeout: ActivityTimeout;
+	private restartTimeout?: NodeJS.Timeout;
+
 	constructor(
 		private readonly client: StreamrClient,
 		private readonly systemStream: Stream,
 		private readonly recoveryStream: Stream,
 	) {
-		//
+		this.activityTimeout = new ActivityTimeout(this.onActivityTimout.bind(this), ACTIVITY_TIMEOUT);
 	}
 
 	public async start(
@@ -66,13 +72,16 @@ export class Recovery {
 		this.onSystemMessage = onSystemMessage;
 		this.subscription = await this.client.subscribe(this.recoveryStream, this.onRecoveryMessage.bind(this));
 
-		logger.info(`Waiting for ${DELAY}ms to form peer connections...`);
-		setTimeout(() => this.sendRecoveryRequest(), DELAY);
+		logger.info(`Waiting for ${START_DELAY}ms to form peer connections...`);
+		setTimeout(this.sendRecoveryRequest.bind(this), START_DELAY);
 
 		logger.info('Started');
 	}
 
 	public async stop() {
+		this.activityTimeout.stop();
+		clearTimeout(this.restartTimeout);
+
 		await this.subscription?.unsubscribe();
 		this.subscription = undefined;
 
@@ -101,10 +110,21 @@ export class Recovery {
 		return summary;
 	}
 
+	private async onActivityTimout() {
+		logger.warn('Activity timeout');
+		await this.sendRecoveryRequest();
+	}
+
+	private waitAndRestart() {
+		this.restartTimeout = setTimeout(async () => {
+			await this.sendRecoveryRequest();
+		}, RESTART_DELAY);
+	}
+
 	private async sendRecoveryRequest() {
 		this.requestId = uuid();
 		const from = this.progress.timestamp || 0;
-		const to = Date.now();
+		const to = 0;
 		const recoveryRequest = new RecoveryRequest({ requestId: this.requestId, from, to });
 
 		logger.info('Sending RecoveryRequest', { requestId: recoveryRequest.requestId, from: recoveryRequest.from, to: recoveryRequest.to });
@@ -113,6 +133,8 @@ export class Recovery {
 		for (const broker of BROKERS) {
 			this.progresses.set(broker, { isComplete: false, lastSeqNum: -1 });
 		}
+
+		this.activityTimeout.start();
 		this.isRestarting = false;
 	}
 
@@ -122,6 +144,11 @@ export class Recovery {
 	): Promise<void> {
 		const systemMessage = SystemMessage.deserialize(content);
 		if (!MESSAGE_TYPES.includes(systemMessage.messageType)) {
+			return;
+		}
+
+		const recoveryMessage = systemMessage as RecoveryResponse | RecoveryComplete;
+		if (recoveryMessage.requestId != this.requestId) {
 			return;
 		}
 
@@ -135,33 +162,24 @@ export class Recovery {
 			switch (systemMessage.messageType) {
 				case SystemMessageType.RecoveryResponse: {
 					const recoveryResponse = systemMessage as RecoveryResponse;
-
-					if (recoveryResponse.requestId != this.requestId) {
-						return;
-					}
-
 					await this.processRecoveryResponse(recoveryResponse, metadata, progress);
 					break;
 				}
 				case SystemMessageType.RecoveryComplete: {
 					const recoveryComplete = systemMessage as RecoveryComplete;
-
-					if (recoveryComplete.requestId != this.requestId) {
-						return;
-					}
-
 					await this.processRecoveryComplete(recoveryComplete, metadata, progress);
 					break;
 				}
 			}
+
+			this.activityTimeout.update();
 		} catch (error: any) {
 			if (!this.isRestarting) {
 				this.isRestarting = true;
 				logger.warn('Failed to process RecoveryMessage', { message: error.message });
 
-				setTimeout(async () => {
-					await this.sendRecoveryRequest();
-				}, 30 * 1000);
+				this.activityTimeout.stop();
+				this.waitAndRestart()
 			}
 		}
 	}

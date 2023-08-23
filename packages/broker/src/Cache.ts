@@ -52,6 +52,6 @@ export class Cache extends EventEmitter {
 	public get(from: number, to: number) {
 		return this.records.filter((record) =>
 			record.metadata.timestamp >= from &&
-			record.metadata.timestamp < to);
+			record.metadata.timestamp < (to || Number.MAX_SAFE_INTEGER));
 	}
 }
