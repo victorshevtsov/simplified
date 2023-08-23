@@ -3,6 +3,7 @@ import { Logger } from '@streamr/utils';
 import { MessageMetadata, Stream, StreamrClient, Subscription } from 'streamr-client';
 import { Cache } from './Cache';
 
+const INTERVAL = 100;
 const PAYLOAD_LIMIT = 500;
 
 const logger = new Logger(module);
@@ -60,6 +61,7 @@ export class Recovery {
 
 			if (payload.length === PAYLOAD_LIMIT) {
 				await this.sendResponse(requestId, seqNum++, payload.splice(0));
+				await new Promise((resolve) => setTimeout(resolve, INTERVAL));
 			}
 		}
 
