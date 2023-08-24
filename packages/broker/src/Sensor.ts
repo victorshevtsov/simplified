@@ -6,7 +6,7 @@ const logger = new Logger(module);
 
 const INTERVAL_FAST = 50;
 const INTERVAL_SLOW = 1000;
-const THRESHOLD = 2000;
+const THRESHOLD = 20_000;
 
 export class Sensor {
 	private timer?: NodeJS.Timeout;

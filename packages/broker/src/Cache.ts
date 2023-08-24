@@ -6,7 +6,7 @@ import { MessageMetadata } from 'streamr-client';
 
 const logger = new Logger(module);
 
-const LIMIT = 10000;
+const LIMIT = 100_000;
 
 export class Cache extends EventEmitter {
 	private records: {
