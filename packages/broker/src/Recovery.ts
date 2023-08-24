@@ -5,6 +5,7 @@ import { Cache } from './Cache';
 
 const INTERVAL = 100;
 const PAYLOAD_LIMIT = 200;
+const RESPONSE_LIMIT = 10;
 
 const logger = new Logger(module);
 
@@ -63,13 +64,17 @@ export class Recovery {
 				await this.sendResponse(requestId, seqNum++, payload.splice(0));
 				await new Promise((resolve) => setTimeout(resolve, INTERVAL));
 			}
+
+			if (seqNum === RESPONSE_LIMIT) {
+				break;
+			}
 		}
 
 		if (payload.length > 0) {
 			await this.sendResponse(requestId, seqNum++, payload);
 		}
 
-		await this.sendComplete(requestId, seqNum);
+		await this.sendComplete(requestId, seqNum, seqNum < RESPONSE_LIMIT);
 	}
 
 	private async sendResponse(
@@ -91,8 +96,8 @@ export class Recovery {
 		);
 	}
 
-	private async sendComplete(requestId: string, seqNum: number) {
-		const recoveryComplete = new RecoveryComplete({ requestId, seqNum });
+	private async sendComplete(requestId: string, seqNum: number, isFulfilled: boolean) {
+		const recoveryComplete = new RecoveryComplete({ requestId, seqNum, isFulfilled });
 		const recoveryCompleteSeralized = recoveryComplete.serialize();
 
 		await this.recoveryStream.publish(recoveryCompleteSeralized);

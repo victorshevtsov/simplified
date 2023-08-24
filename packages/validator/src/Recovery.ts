@@ -38,11 +38,13 @@ interface RecoveryProgress {
 	timestamp?: number;
 	lastSeqNum: number;
 	isComplete: boolean;
+	isFulfilled: boolean;
 }
 
 interface RecoverySummary {
 	timestamp?: number;
 	isComplete: boolean;
+	isFulfilled: boolean;
 }
 
 const logger = new Logger(module);
@@ -63,7 +65,7 @@ export class Recovery {
 		private readonly systemStream: Stream,
 		private readonly recoveryStream: Stream,
 	) {
-		this.activityTimeout = new ActivityTimeout(this.onActivityTimout.bind(this), ACTIVITY_TIMEOUT);
+		this.activityTimeout = new ActivityTimeout(this.onActivityTimeout.bind(this), ACTIVITY_TIMEOUT);
 	}
 
 	public async start(
@@ -90,27 +92,29 @@ export class Recovery {
 
 	public get progress(): RecoverySummary {
 		if (this.progresses.size === 0) {
-			return { isComplete: false };
+			return { isComplete: false, isFulfilled: false };
 		}
 
 		const summary: RecoverySummary = {
 			timestamp: Number.MAX_SAFE_INTEGER,
 			isComplete: true,
+			isFulfilled: true,
 		};
 
 		for (const [_, progress] of this.progresses) {
 			if (progress.timestamp === undefined) {
-				return { isComplete: false };
+				return { isComplete: false, isFulfilled: false };
 			}
 
 			summary.timestamp = Math.min(summary.timestamp!, progress.timestamp);
 			summary.isComplete = summary.isComplete && progress.isComplete;
+			summary.isFulfilled = summary.isFulfilled && progress.isFulfilled;
 		}
 
 		return summary;
 	}
 
-	private async onActivityTimout() {
+	private async onActivityTimeout() {
 		logger.warn('Activity timeout');
 		await this.sendRecoveryRequest();
 	}
@@ -134,6 +138,7 @@ export class Recovery {
 			const progress = {
 				...this.progresses.get(broker) || { isComplete: false, lastSeqNum: -1 },
 				isComplete: false,
+				isFulfilled: false,
 				lastSeqNum: -1,
 			}
 			this.progresses.set(broker, progress);
@@ -159,7 +164,7 @@ export class Recovery {
 
 		let progress = this.progresses.get(metadata.publisherId);
 		if (!progress) {
-			progress = { isComplete: false, lastSeqNum: -1 };
+			progress = { isComplete: false, isFulfilled: false, lastSeqNum: -1 };
 			this.progresses.set(metadata.publisherId, progress);
 		}
 
@@ -229,10 +234,17 @@ export class Recovery {
 		}
 
 		progress.isComplete = true;
+		progress.isFulfilled = recoveryComplete.isFulfilled;
 
 		if (this.progress.isComplete) {
-			logger.info('Successfully complete Recovery');
-			setImmediate(this.stop.bind(this));
+			if (this.progress.isFulfilled) {
+				logger.info('Successfully complete Recovery');
+				setImmediate(this.stop.bind(this));
+			} else {
+				logger.info('Successfully complete Recovery Round. Sending next Request.');
+				this.activityTimeout.stop();
+				setImmediate(this.sendRecoveryRequest.bind(this));
+			}
 		}
 	}
 }
