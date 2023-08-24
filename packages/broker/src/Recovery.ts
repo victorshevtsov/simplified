@@ -4,7 +4,7 @@ import { MessageMetadata, Stream, StreamrClient, Subscription } from 'streamr-cl
 import { Cache } from './Cache';
 
 const INTERVAL = 100;
-const PAYLOAD_LIMIT = 200;
+const PAYLOAD_LIMIT = 100;
 const RESPONSE_LIMIT = 10;
 
 const logger = new Logger(module);
