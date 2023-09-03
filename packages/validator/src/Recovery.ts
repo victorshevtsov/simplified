@@ -1,4 +1,5 @@
 import {
+	Measurement,
 	RecoveryComplete,
 	RecoveryRequest,
 	RecoveryResponse,
@@ -52,7 +53,7 @@ const logger = new Logger(module);
 export class Recovery {
 	private requestId?: string;
 	private subscription?: Subscription;
-	private onSystemMessage?: (systemMessage: SystemMessage, metadata: MessageMetadata) => Promise<void>;
+	private onMeasurement?: (measurement: Measurement, metadata: MessageMetadata) => Promise<void>;
 
 	private progresses: Map<EthereumAddress, RecoveryProgress> = new Map();
 	private isRestarting: boolean = false;
@@ -69,9 +70,9 @@ export class Recovery {
 	}
 
 	public async start(
-		onSystemMessage: (systemMessage: SystemMessage, metadata: MessageMetadata) => Promise<void>
+		onMeasurement: (measurement: Measurement, metadata: MessageMetadata) => Promise<void>
 	) {
-		this.onSystemMessage = onSystemMessage;
+		this.onMeasurement = onMeasurement;
 		this.subscription = await this.client.subscribe(this.recoveryStream, this.onRecoveryMessage.bind(this));
 
 		logger.info(`Waiting for ${START_DELAY}ms to form peer connections...`);
@@ -209,8 +210,11 @@ export class Recovery {
 		}
 
 		for await (const [msg, msgMetadata] of recoveryResponse.payload) {
-			await this.onSystemMessage?.(msg, msgMetadata as MessageMetadata);
-			progress.timestamp = msgMetadata.timestamp;
+			if (msg.messageType === SystemMessageType.Measurement) {
+				const measurement = msg as Measurement;
+				await this.onMeasurement?.(measurement, msgMetadata as MessageMetadata);
+				progress.timestamp = msgMetadata.timestamp;
+			}
 		}
 
 		progress.lastSeqNum = recoveryResponse.seqNum;

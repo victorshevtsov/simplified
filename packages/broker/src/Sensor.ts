@@ -35,6 +35,7 @@ export class Sensor {
 	private async onTimer() {
 		const measurement = new Measurement({
 			sensorId: this.id,
+			seqNum: this.counter,
 			pressure: 1000 + this.counter % 10,
 			temperature: 100 + this.counter % 50,
 		});

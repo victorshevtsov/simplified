@@ -1,4 +1,4 @@
-import { SystemMessage, SystemMessageType } from '@simplified/protocol';
+import { Measurement, SystemMessage, SystemMessageType } from '@simplified/protocol';
 import { BroadbandSubscriber } from '@simplified/shared';
 import { Logger } from '@streamr/utils';
 import { MessageMetadata } from 'streamr-client';
@@ -7,16 +7,18 @@ import { Recovery } from './Recovery';
 const logger = new Logger(module);
 
 export class Listener {
+  private readonly sensors: Map<string, Measurement>
+
   constructor(
     private readonly sensorSubscriber: BroadbandSubscriber,
     private readonly recovery: Recovery,
   ) {
-    //
+    this.sensors = new Map<string, Measurement>();
   }
 
   public async start() {
     await this.sensorSubscriber.subscribe(this.onMessage.bind(this));
-    await this.recovery.start(this.onSystemMessage);
+    await this.recovery.start(this.onMeasurement);
 
     logger.info('Started');
   }
@@ -38,13 +40,26 @@ export class Listener {
       return;
     }
 
-    await this.onSystemMessage(systemMessage, metadata);
+    const measurement = systemMessage as Measurement;
+    await this.onMeasurement(measurement, metadata);
   }
 
-  private async onSystemMessage(
-    systemMessage: SystemMessage,
+  private async onMeasurement(
+    measurement: Measurement,
     metadata: MessageMetadata
   ): Promise<void> {
-    // logger.info('onSystemMessage', { systemMessage });
+    const prevMeasurement = this.sensors.get(measurement.sensorId);
+    if (prevMeasurement &&
+      measurement.seqNum - prevMeasurement.seqNum !== 1) {
+      logger.error(
+        "Unexpected Measurement seqNum",
+        {
+          sensorId: measurement.sensorId,
+          prev: prevMeasurement.seqNum,
+          curr: measurement.seqNum
+        });
+    }
+
+    this.sensors.set(measurement.sensorId, measurement);
   }
 }
