@@ -31,14 +31,16 @@ export const startCommand = new Command('start')
 		}
 
 		const systemStreamId = `${options.baseAddress.toString()}/system`;
-		// const sensorStreamId = `${options.baseAddress.toString()}/sensor`;
-		// const recoveryStreamId = `${options.baseAddress.toString()}/recovery`;
+		const sensorStreamId = `${options.baseAddress.toString()}/sensor`;
+		const recoveryStreamId = `${options.baseAddress.toString()}/recovery`;
 
 		const client = await createClient(options.privateKey, createClientOptions);
 
 		const systemStream = await client.getStream(systemStreamId);
-		const sensorStream = systemStream; // await client.getStream(sensorStreamId);
-		const recoveryStream = systemStream; // await client.getStream(recoveryStreamId);
+		const sensorStream = await client.getStream(sensorStreamId);
+		const recoveryStream = await client.getStream(recoveryStreamId);
+		// const sensorStream = systemStream;
+		// const recoveryStream = systemStream;
 
 		const sensorSubscriber = new BroadbandSubscriber(client, sensorStream);
 
