@@ -106,7 +106,7 @@ export class Recovery {
 				return { isComplete: false, isFulfilled: false };
 			}
 
-			summary.timestamp = Math.min(summary.timestamp!, progress.timestamp);
+			summary.timestamp = Math.min(summary.timestamp || 0, progress.timestamp);
 			summary.isComplete = summary.isComplete && progress.isComplete;
 			summary.isFulfilled = summary.isFulfilled && progress.isFulfilled;
 		}
@@ -140,7 +140,8 @@ export class Recovery {
 				isComplete: false,
 				isFulfilled: false,
 				lastSeqNum: -1,
-			}
+			};
+
 			this.progresses.set(broker, progress);
 		}
 
@@ -208,7 +209,7 @@ export class Recovery {
 		}
 
 		for await (const [msg, msgMetadata] of recoveryResponse.payload) {
-			await this.onSystemMessage!(msg, msgMetadata as MessageMetadata);
+			await this.onSystemMessage?.(msg, msgMetadata as MessageMetadata);
 			progress.timestamp = msgMetadata.timestamp;
 		}
 
@@ -230,7 +231,7 @@ export class Recovery {
 
 		// if no recovery messages received
 		if (progress.timestamp === undefined) {
-			progress.timestamp = 0;
+			progress.timestamp = metadata.timestamp;
 		}
 
 		progress.isComplete = true;

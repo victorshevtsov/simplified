@@ -1,7 +1,7 @@
 import { Stream, StreamrClient } from 'streamr-client';
 
 export class BroadbandPublisher {
-	private partitions: number;
+	private readonly partitions: number;
 	private counter: number = 0;
 
 	constructor(

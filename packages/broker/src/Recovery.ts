@@ -28,7 +28,7 @@ export class Recovery {
 	}
 
 	public async stop() {
-		this.subscription?.unsubscribe();
+		await this.subscription?.unsubscribe();
 
 		logger.info('Stopped');
 	}
@@ -44,12 +44,12 @@ export class Recovery {
 			`Received RecoveryRequest: ${JSON.stringify(recoveryRequest)}`
 		);
 
-		setTimeout(async () => {
+		setImmediate(async () => {
 			await this.processRequest(
 				recoveryRequest.requestId,
 				recoveryRequest.from,
 				recoveryRequest.to);
-		}, 1000)
+		})
 	}
 
 	private async processRequest(requestId: string, from: number, to: number) {
