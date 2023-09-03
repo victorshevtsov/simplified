@@ -4,7 +4,7 @@ import { Command } from 'commander';
 import { Listener } from '../Listener';
 import { Recovery } from '../Recovery';
 import { Validator } from '../Validator';
-import { baseAddress, devNetworkOption, externalIpOption, privateKeyOption } from './options';
+import { baseAddress, devNetworkOption, externalIpOption, privateKeyOption, recoveryOption } from './options';
 
 const logger = new Logger(module);
 
@@ -13,6 +13,7 @@ interface Options {
 	devNetwork: boolean;
 	externalIp: string;
 	privateKey: string;
+	recovery: boolean;
 	streamId: string;
 }
 
@@ -22,8 +23,9 @@ export const startCommand = new Command('start')
 	.addOption(devNetworkOption)
 	.addOption(externalIpOption)
 	.addOption(privateKeyOption)
+	.addOption(recoveryOption)
 	.action(async (options: Options) => {
-		logger.info('Creating Validator...');
+		logger.info('Creating Validator with options:', { options });
 
 		const createClientOptions: CreateClientOptions = {
 			devNetwork: options.devNetwork,
@@ -44,7 +46,10 @@ export const startCommand = new Command('start')
 
 		const sensorSubscriber = new BroadbandSubscriber(client, sensorStream);
 
-		const recovery = new Recovery(client, systemStream, recoveryStream);
+		const recovery = options.recovery
+			? new Recovery(client, systemStream, recoveryStream)
+			: undefined;
+
 		const listener = new Listener(sensorSubscriber, recovery);
 
 		const validator = new Validator(listener);

@@ -28,3 +28,10 @@ export const privateKeyOption = new Option(
 )
 	.env('PRIVATE_KEY')
 	.makeOptionMandatory();
+
+export const recoveryOption = new Option(
+	'--recovery',
+	'Start Recovery'
+)
+	.env('RECOVERY')
+	.default(false);
