@@ -16,6 +16,13 @@ export const devNetworkOption = new Option(
 	.env('DEV_NETWORK')
 	.default(false);
 
+export const fillCacheOption = new Option(
+	'--fill-cache',
+	'Fill the Cache at startup'
+)
+	.env('FILL_CACHE')
+	.default(false);
+
 export const externalIpOption = new Option(
 	'--external-ip <ip>',
 	'External IP address'

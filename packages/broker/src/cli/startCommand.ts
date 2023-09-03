@@ -6,7 +6,7 @@ import { Broker } from '../Broker';
 import { Cache } from '../Cache';
 import { Recovery } from '../Recovery';
 import { Sensor } from '../Sensor';
-import { baseAddress, devNetworkOption, externalIpOption, privateKeyOption } from './options';
+import { baseAddress, devNetworkOption, externalIpOption, fillCacheOption, privateKeyOption } from './options';
 
 const logger = new Logger(module);
 
@@ -14,6 +14,7 @@ interface Options {
 	baseAddress: EthereumAddress;
 	devNetwork: boolean;
 	externalIp: string;
+	fillCache: boolean;
 	privateKey: string;
 }
 
@@ -22,9 +23,10 @@ export const startCommand = new Command('start')
 	.addOption(baseAddress)
 	.addOption(devNetworkOption)
 	.addOption(externalIpOption)
+	.addOption(fillCacheOption)
 	.addOption(privateKeyOption)
 	.action(async (options: Options) => {
-		logger.info('Creating Broker...');
+		logger.info('Creating Broker with options:', { options });
 
 		const createClientOptions: CreateClientOptions = {
 			devNetwork: options.devNetwork,
@@ -46,7 +48,7 @@ export const startCommand = new Command('start')
 		const sensorPublisher = new BroadbandPublisher(client, sensorStream);
 		const sensorSubscriber = new BroadbandSubscriber(client, sensorStream);
 
-		const sensor = new Sensor(uuid(), sensorPublisher);
+		const sensor = new Sensor(uuid(), sensorPublisher, options.fillCache);
 		const cache = new Cache(sensorSubscriber);
 		const recovery = new Recovery(client, systemStream, recoveryStream, cache);
 
