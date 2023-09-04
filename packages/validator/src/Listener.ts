@@ -52,12 +52,12 @@ export class Listener {
     if (prevMeasurement &&
       measurement.seqNum - prevMeasurement.seqNum !== 1) {
       logger.error(
-        "Unexpected Measurement seqNum",
-        {
+        `Unexpected Measurement seqNum ${JSON.stringify({
           sensorId: measurement.sensorId,
           prev: prevMeasurement.seqNum,
           curr: measurement.seqNum
-        });
+        })}`
+      );
     }
 
     this.sensors.set(measurement.sensorId, measurement);

@@ -14,7 +14,7 @@ const DEV_NETWORK_CONFIG: StreamrClientConfig = {
 };
 
 export const createClient = async (privateKey: string, options: CreateClientOptions): Promise<StreamrClient> => {
-  logger.info('Creating StreamrClient with options:', { options });
+  logger.info(`Creating StreamrClient with options ${JSON.stringify({ options })}`);
 
   let config: StreamrClientConfig = options.devNetwork
     ? DEV_NETWORK_CONFIG
@@ -34,9 +34,9 @@ export const createClient = async (privateKey: string, options: CreateClientOpti
   //   }
   // }
 
-  logger.info('Creating StreamrClient with config:', { config });
+  logger.info(`Creating StreamrClient with config ${JSON.stringify({ config })}`);
   const client = new StreamrClient(config);
-  logger.info('StreamrClient created:', { address: await client.getAddress() });
+  logger.info(`StreamrClient created ${JSON.stringify({ address: await client.getAddress() })}`);
 
   return client;
 };

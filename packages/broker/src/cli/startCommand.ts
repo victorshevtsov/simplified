@@ -26,7 +26,7 @@ export const startCommand = new Command('start')
 	.addOption(fillCacheOption)
 	.addOption(privateKeyOption)
 	.action(async (options: Options) => {
-		logger.info('Creating Broker with options:', { options });
+		logger.info(`Creating Broker with options ${JSON.stringify({ options })}`);
 
 		const createClientOptions: CreateClientOptions = {
 			devNetwork: options.devNetwork,
