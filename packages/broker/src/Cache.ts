@@ -58,8 +58,6 @@ export class Cache extends EventEmitter {
 		});
 		this.counter++;
 
-		await sleep(100);
-
 		await this.publisher.publish(confirmation.serialize());
 	}
 

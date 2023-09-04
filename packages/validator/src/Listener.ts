@@ -78,8 +78,6 @@ export class Listener {
       );
     }
 
-    await sleep(100);
-
     this.measurements.set(metadata.publisherId, measurement);
   }
 
@@ -98,8 +96,6 @@ export class Listener {
         })}`
       );
     }
-
-    await sleep(100);
 
     this.confirmations.set(metadata.publisherId, confirtmation);
   }
