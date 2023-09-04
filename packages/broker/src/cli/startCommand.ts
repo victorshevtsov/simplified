@@ -1,36 +1,57 @@
-import { CreateClientOptions, createClient } from '@simplified/shared';
-import { Logger } from '@streamr/utils';
+import { BroadbandPublisher, BroadbandSubscriber, CreateClientOptions, createClient } from '@simplified/shared';
+import { EthereumAddress, Logger } from '@streamr/utils';
 import { Command } from 'commander';
+import { v4 as uuid } from 'uuid';
 import { Broker } from '../Broker';
-import { devNetworkOption, externalIpOption, privateKeyOption, streamIdOption } from './options';
+import { Cache } from '../Cache';
+import { Recovery } from '../Recovery';
+import { Sensor } from '../Sensor';
+import { baseAddress, devNetworkOption, externalIpOption, fillCacheOption, privateKeyOption } from './options';
 
 const logger = new Logger(module);
 
 interface Options {
+	baseAddress: EthereumAddress;
 	devNetwork: boolean;
 	externalIp: string;
+	fillCache: boolean;
 	privateKey: string;
-	streamId: string;
 }
 
 export const startCommand = new Command('start')
 	.description('Start Broker')
+	.addOption(baseAddress)
 	.addOption(devNetworkOption)
 	.addOption(externalIpOption)
+	.addOption(fillCacheOption)
 	.addOption(privateKeyOption)
-	.addOption(streamIdOption)
 	.action(async (options: Options) => {
-		logger.info('Starting Broker...');
+		logger.info('Creating Broker with options:', { options });
 
 		const createClientOptions: CreateClientOptions = {
 			devNetwork: options.devNetwork,
 			externalIp: options.externalIp,
 		}
 
-		const client = await createClient(options.privateKey, createClientOptions);
-		const stream = await client.getStream(options.streamId);
+		const systemStreamId = `${options.baseAddress.toString()}/system`;
+		const sensorStreamId = `${options.baseAddress.toString()}/sensor`;
+		const recoveryStreamId = `${options.baseAddress.toString()}/recovery`;
 
-		const broker = new Broker(client, stream);
+		const client = await createClient(options.privateKey, createClientOptions);
+
+		const systemStream = await client.getStream(systemStreamId);
+		const sensorStream = await client.getStream(sensorStreamId);
+		const recoveryStream = await client.getStream(recoveryStreamId);
+		// const sensorStream = systemStream;
+		// const recoveryStream = systemStream;
+
+		const sensorPublisher = new BroadbandPublisher(client, sensorStream);
+		const sensorSubscriber = new BroadbandSubscriber(client, sensorStream);
+
+		const sensor = new Sensor(uuid(), sensorPublisher, options.fillCache);
+		const cache = new Cache(sensorSubscriber);
+		const recovery = new Recovery(client, systemStream, recoveryStream, cache);
+
+		const broker = new Broker(sensor, cache, recovery);
 		await broker.start();
-		logger.info('Broker started');
 	});

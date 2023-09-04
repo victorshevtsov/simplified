@@ -1,21 +1,25 @@
 import {
+	Measurement,
 	RecoveryComplete,
 	RecoveryRequest,
 	RecoveryResponse,
 	SystemMessage,
 	SystemMessageType,
 } from '@simplified/protocol';
-import { BroadbandPublisher, BroadbandSubscriber } from '@simplified/shared';
 import { Logger } from '@streamr/utils';
 import {
 	EthereumAddress,
 	MessageMetadata,
 	Stream,
-	StreamrClient
+	StreamrClient,
+	Subscription
 } from 'streamr-client';
 import { v4 as uuid } from 'uuid';
+import { ActivityTimeout } from './ActivityTimeout';
 
-const DELAY = 15 * 1000;
+const START_DELAY = 5 * 1000;
+const RESTART_DELAY = 30 * 1000;
+const ACTIVITY_TIMEOUT = 30 * 1000;
 
 const MESSAGE_TYPES = [
 	SystemMessageType.RecoveryResponse,
@@ -35,71 +39,118 @@ interface RecoveryProgress {
 	timestamp?: number;
 	lastSeqNum: number;
 	isComplete: boolean;
+	isFulfilled: boolean;
+}
+
+interface RecoverySummary {
+	timestamp?: number;
+	isComplete: boolean;
+	isFulfilled: boolean;
 }
 
 const logger = new Logger(module);
 
 export class Recovery {
 	private requestId?: string;
-	private publisher: BroadbandPublisher
-	private subscriber: BroadbandSubscriber;
+	private subscription?: Subscription;
+	private onMeasurement?: (measurement: Measurement, metadata: MessageMetadata) => Promise<void>;
 
 	private progresses: Map<EthereumAddress, RecoveryProgress> = new Map();
+	private isRestarting: boolean = false;
+
+	private activityTimeout: ActivityTimeout;
+	private restartTimeout?: NodeJS.Timeout;
 
 	constructor(
 		private readonly client: StreamrClient,
-		private readonly stream: Stream,
-		private readonly onSystemMessage: (systemMessage: SystemMessage, metadata: MessageMetadata) => Promise<void>
+		private readonly systemStream: Stream,
+		private readonly recoveryStream: Stream,
 	) {
-		this.publisher = new BroadbandPublisher(this.client, this.stream);
-		this.subscriber = new BroadbandSubscriber(this.client, this.stream);
+		this.activityTimeout = new ActivityTimeout(this.onActivityTimeout.bind(this), ACTIVITY_TIMEOUT);
 	}
 
-	public async start() {
-		logger.info('Starting Recovery...');
+	public async start(
+		onMeasurement: (measurement: Measurement, metadata: MessageMetadata) => Promise<void>
+	) {
+		this.onMeasurement = onMeasurement;
+		this.subscription = await this.client.subscribe(this.recoveryStream, this.onRecoveryMessage.bind(this));
 
-		await this.subscriber.subscribe(this.onMessage.bind(this));
+		logger.info(`Waiting for ${START_DELAY}ms to form peer connections...`);
+		setTimeout(this.sendRecoveryRequest.bind(this), START_DELAY);
 
-		logger.info(`Waiting for ${DELAY}ms to form peer connections...`);
-		setTimeout(() => this.sendRecoveryRequest(), DELAY);
+		logger.info('Started');
 	}
 
 	public async stop() {
-		await this.subscriber.unsubscribe();
+		this.activityTimeout.stop();
+		clearTimeout(this.restartTimeout);
+
+		await this.subscription?.unsubscribe();
+		this.subscription = undefined;
+
+		logger.info('Stopped');
 	}
 
-	public get progress(): RecoveryProgress {
-		const result: RecoveryProgress = {
+	public get progress(): RecoverySummary {
+		if (this.progresses.size === 0) {
+			return { isComplete: false, isFulfilled: false };
+		}
+
+		const summary: RecoverySummary = {
 			timestamp: Number.MAX_SAFE_INTEGER,
-			lastSeqNum: -1,
 			isComplete: true,
+			isFulfilled: true,
 		};
 
 		for (const [_, progress] of this.progresses) {
 			if (progress.timestamp === undefined) {
-				return { isComplete: false, lastSeqNum: -1 };
+				return { isComplete: false, isFulfilled: false };
 			}
 
-			result.timestamp = Math.min(result.timestamp!, progress.timestamp);
-			result.isComplete = result.isComplete && progress.isComplete;
+			summary.timestamp = Math.min(summary.timestamp || 0, progress.timestamp);
+			summary.isComplete = summary.isComplete && progress.isComplete;
+			summary.isFulfilled = summary.isFulfilled && progress.isFulfilled;
 		}
 
-		return result;
+		return summary;
+	}
+
+	private async onActivityTimeout() {
+		logger.warn('Activity timeout');
+		await this.sendRecoveryRequest();
+	}
+
+	private waitAndRestart() {
+		this.restartTimeout = setTimeout(async () => {
+			await this.sendRecoveryRequest();
+		}, RESTART_DELAY);
 	}
 
 	private async sendRecoveryRequest() {
 		this.requestId = uuid();
-		const recoveryRequest = new RecoveryRequest({ requestId: this.requestId });
+		const from = this.progress.timestamp || 0;
+		const to = 0;
+		const recoveryRequest = new RecoveryRequest({ requestId: this.requestId, from, to });
 
-		logger.info(`Sending RecoveryRequest ${JSON.stringify({ requestId: recoveryRequest.requestId })}`);
-		await this.publisher.publish(recoveryRequest.serialize());
+		logger.info('Sending RecoveryRequest', { requestId: recoveryRequest.requestId, from: recoveryRequest.from, to: recoveryRequest.to });
+		await this.client.publish(this.systemStream, recoveryRequest.serialize());
 
 		for (const broker of BROKERS) {
-			this.progresses.set(broker, { isComplete: false, lastSeqNum: -1 });
+			const progress = {
+				...this.progresses.get(broker) || { isComplete: false, lastSeqNum: -1 },
+				isComplete: false,
+				isFulfilled: false,
+				lastSeqNum: -1,
+			};
+
+			this.progresses.set(broker, progress);
 		}
+
+		this.activityTimeout.start();
+		this.isRestarting = false;
 	}
 
-	private async onMessage(
+	private async onRecoveryMessage(
 		content: unknown,
 		metadata: MessageMetadata
 	): Promise<void> {
@@ -108,73 +159,96 @@ export class Recovery {
 			return;
 		}
 
+		const recoveryMessage = systemMessage as RecoveryResponse | RecoveryComplete;
+		if (recoveryMessage.requestId != this.requestId) {
+			return;
+		}
+
 		let progress = this.progresses.get(metadata.publisherId);
 		if (!progress) {
-			progress = { isComplete: false, lastSeqNum: -1 };
+			progress = { isComplete: false, isFulfilled: false, lastSeqNum: -1 };
 			this.progresses.set(metadata.publisherId, progress);
 		}
 
-		switch (systemMessage.messageType) {
-			case SystemMessageType.RecoveryResponse: {
-				const recoveryResponse = systemMessage as RecoveryResponse;
-
-				if (recoveryResponse.requestId != this.requestId) {
-					return;
-				}
-
-				logger.info('Processing RecoveryResponse',
-					{
-						publisherId: metadata.publisherId,
-						seqNum: recoveryResponse.seqNum,
-						payloadLength: recoveryResponse.payload.length,
-					}
-				);
-
-				if (recoveryResponse.seqNum - progress.lastSeqNum !== 1) {
-					logger.error("RecoveryResponse has unexpected seqNum", { seqNum: recoveryResponse.seqNum })
+		try {
+			switch (systemMessage.messageType) {
+				case SystemMessageType.RecoveryResponse: {
+					const recoveryResponse = systemMessage as RecoveryResponse;
+					await this.processRecoveryResponse(recoveryResponse, metadata, progress);
 					break;
 				}
-
-				for await (const [msg, msgMetadata] of recoveryResponse.payload) {
-					await this.onSystemMessage(msg, msgMetadata as MessageMetadata);
-					progress.timestamp = metadata.timestamp;
+				case SystemMessageType.RecoveryComplete: {
+					const recoveryComplete = systemMessage as RecoveryComplete;
+					await this.processRecoveryComplete(recoveryComplete, metadata, progress);
+					break;
 				}
-
-				progress.lastSeqNum = recoveryResponse.seqNum;
-				break;
 			}
-			case SystemMessageType.RecoveryComplete: {
-				const recoveryComplete = systemMessage as RecoveryComplete;
 
-				if (recoveryComplete.requestId != this.requestId) {
-					return;
-				}
+			this.activityTimeout.update();
+		} catch (error: any) {
+			if (!this.isRestarting) {
+				this.isRestarting = true;
+				logger.warn('Failed to process RecoveryMessage', { message: error.message });
 
-				logger.info(
-					'Processing RecoveryComplete',
-					{
-						publisherId: metadata.publisherId,
-						seqNum: recoveryComplete.seqNum,
-					}
-				);
+				this.activityTimeout.stop();
+				this.waitAndRestart()
+			}
+		}
+	}
 
-				if (recoveryComplete.seqNum - progress.lastSeqNum !== 1) {
-					logger.error("RecoveryComplete has unexpected seqNum", { seqNum: recoveryComplete.seqNum })
-					break;
-				}
+	private async processRecoveryResponse(recoveryResponse: RecoveryResponse, metadata: MessageMetadata, progress: RecoveryProgress) {
+		logger.info('Processing RecoveryResponse',
+			{
+				publisherId: metadata.publisherId,
+				seqNum: recoveryResponse.seqNum,
+				payloadLength: recoveryResponse.payload.length,
+			}
+		);
 
-				// if no recovery messages received
-				if (progress.timestamp === undefined) {
-					progress.timestamp = 0;
-				}
+		if (recoveryResponse.seqNum - progress.lastSeqNum !== 1) {
+			throw new Error(`RecoveryResponse has unexpected seqNum ${JSON.stringify({ seqNum: recoveryResponse.seqNum })}`);
+		}
 
-				progress.isComplete = true;
+		for await (const [msg, msgMetadata] of recoveryResponse.payload) {
+			if (msg.messageType === SystemMessageType.Measurement) {
+				const measurement = msg as Measurement;
+				await this.onMeasurement?.(measurement, msgMetadata as MessageMetadata);
+				progress.timestamp = msgMetadata.timestamp;
+			}
+		}
 
-				if (this.progress.isComplete) {
-					logger.info('Successfully complete Recovery');
-					await this.stop();
-				}
-				break;
+		progress.lastSeqNum = recoveryResponse.seqNum;
+	}
+
+	private async processRecoveryComplete(recoveryComplete: RecoveryComplete, metadata: MessageMetadata, progress: RecoveryProgress) {
+		logger.info(
+			'Processing RecoveryComplete',
+			{
+				publisherId: metadata.publisherId,
+				seqNum: recoveryComplete.seqNum,
+			}
+		);
+
+		if (recoveryComplete.seqNum - progress.lastSeqNum !== 1) {
+			throw new Error(`RecoveryComplete has unexpected seqNum ${JSON.stringify({ seqNum: recoveryComplete.seqNum })}`);
+		}
+
+		// if no recovery messages received
+		if (progress.timestamp === undefined) {
+			progress.timestamp = metadata.timestamp;
+		}
+
+		progress.isComplete = true;
+		progress.isFulfilled = recoveryComplete.isFulfilled;
+
+		if (this.progress.isComplete) {
+			if (this.progress.isFulfilled) {
+				logger.info('Successfully complete Recovery');
+				setImmediate(this.stop.bind(this));
+			} else {
+				logger.info('Successfully complete Recovery Round. Sending next Request.');
+				this.activityTimeout.stop();
+				setImmediate(this.sendRecoveryRequest.bind(this));
 			}
 		}
 	}

@@ -9,19 +9,21 @@ const INTERVAL_SLOW = 1000;
 const THRESHOLD = 2000;
 
 export class Sensor {
+	private interval: number;
 	private timer?: NodeJS.Timeout;
 	private counter: number = 0;
 
 	constructor(
 		private readonly id: string,
-		private readonly publisher: BroadbandPublisher
+		private readonly publisher: BroadbandPublisher,
+		private readonly fillCache: boolean
 	) {
-		//
+		this.interval = this.fillCache ? INTERVAL_FAST : INTERVAL_SLOW;
 	}
 
-	public async start(interval: number = INTERVAL_FAST) {
-		logger.info('Started', { interval });
-		this.timer = setInterval(this.onTimer.bind(this), interval);
+	public async start() {
+		logger.info('Started', { interval: this.interval });
+		this.timer = setInterval(this.onTimer.bind(this), this.interval);
 	}
 
 	public async stop() {
@@ -35,16 +37,18 @@ export class Sensor {
 	private async onTimer() {
 		const measurement = new Measurement({
 			sensorId: this.id,
+			seqNum: this.counter,
 			pressure: 1000 + this.counter % 10,
 			temperature: 100 + this.counter % 50,
 		});
 		this.counter++;
 		await this.publisher.publish(measurement.serialize());
 
-		if (this.counter === THRESHOLD) {
+		if (this.fillCache && this.counter === THRESHOLD) {
 			logger.info('Threshold reached. Switching to slower interval', { THRESHOLD });
 			this.stop();
-			this.start(INTERVAL_SLOW);
+			this.interval = INTERVAL_SLOW;
+			this.start();
 		}
 	}
 }

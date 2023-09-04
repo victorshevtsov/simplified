@@ -1,34 +1,36 @@
 import { RecoveryComplete, RecoveryRequest, RecoveryResponse, SystemMessage, SystemMessageType } from '@simplified/protocol';
-import { BroadbandPublisher, BroadbandSubscriber } from '@simplified/shared';
 import { Logger } from '@streamr/utils';
-import { MessageMetadata, Stream, StreamrClient } from 'streamr-client';
+import { MessageMetadata, Stream, StreamrClient, Subscription } from 'streamr-client';
 import { Cache } from './Cache';
 
-const PAYLOAD_LIMIT = 500;
+const INTERVAL = 100;
+const PAYLOAD_LIMIT = 200;
+const RESPONSE_LIMIT = 10;
 
 const logger = new Logger(module);
 
 export class Recovery {
-	private readonly subscriber: BroadbandSubscriber;
+	private subscription?: Subscription;
 
 	constructor(
 		private readonly client: StreamrClient,
-		private readonly stream: Stream,
-		private readonly publisher: BroadbandPublisher,
+		private readonly systemStream: Stream,
+		private readonly recoveryStream: Stream,
 		private readonly cache: Cache,
 	) {
-		this.subscriber = new BroadbandSubscriber(
-			this.client,
-			this.stream
-		);
+		//
 	}
 
 	public async start() {
-		await this.subscriber.subscribe(this.onMessage.bind(this));
+		this.subscription = await this.client.subscribe(this.systemStream, this.onMessage.bind(this));
+
+		logger.info('Started');
 	}
 
 	public async stop() {
-		await this.subscriber.unsubscribe();
+		await this.subscription?.unsubscribe();
+
+		logger.info('Stopped');
 	}
 
 	private async onMessage(message: unknown) {
@@ -42,13 +44,16 @@ export class Recovery {
 			`Received RecoveryRequest: ${JSON.stringify(recoveryRequest)}`
 		);
 
-		setTimeout(async () => {
-			await this.processRequest(recoveryRequest.requestId);
-		}, 1000)
+		setImmediate(async () => {
+			await this.processRequest(
+				recoveryRequest.requestId,
+				recoveryRequest.from,
+				recoveryRequest.to);
+		})
 	}
 
-	private async processRequest(requestId: string) {
-		const cacheRecords = this.cache.get(0);
+	private async processRequest(requestId: string, from: number, to: number) {
+		const cacheRecords = this.cache.get(from, to);
 
 		let seqNum: number = 0;
 		const payload: [SystemMessage, MessageMetadata][] = [];
@@ -57,6 +62,11 @@ export class Recovery {
 
 			if (payload.length === PAYLOAD_LIMIT) {
 				await this.sendResponse(requestId, seqNum++, payload.splice(0));
+				await new Promise((resolve) => setTimeout(resolve, INTERVAL));
+			}
+
+			if (seqNum === RESPONSE_LIMIT) {
+				break;
 			}
 		}
 
@@ -64,7 +74,7 @@ export class Recovery {
 			await this.sendResponse(requestId, seqNum++, payload);
 		}
 
-		await this.sendComplete(requestId, seqNum);
+		await this.sendComplete(requestId, seqNum, seqNum < RESPONSE_LIMIT);
 	}
 
 	private async sendResponse(
@@ -75,7 +85,7 @@ export class Recovery {
 		const recoveryResponse = new RecoveryResponse({ requestId, seqNum, payload });
 		const recoveryResponseSeralized = recoveryResponse.serialize();
 
-		await this.publisher.publish(recoveryResponseSeralized);
+		await this.recoveryStream.publish(recoveryResponseSeralized);
 		logger.info(
 			'Published RecoveryResponse',
 			{
@@ -86,11 +96,11 @@ export class Recovery {
 		);
 	}
 
-	private async sendComplete(requestId: string, seqNum: number) {
-		const recoveryComplete = new RecoveryComplete({ requestId, seqNum });
+	private async sendComplete(requestId: string, seqNum: number, isFulfilled: boolean) {
+		const recoveryComplete = new RecoveryComplete({ requestId, seqNum, isFulfilled });
 		const recoveryCompleteSeralized = recoveryComplete.serialize();
 
-		await this.publisher.publish(recoveryCompleteSeralized);
+		await this.recoveryStream.publish(recoveryCompleteSeralized);
 		logger.info(
 			'Published RecoveryComplete',
 			{

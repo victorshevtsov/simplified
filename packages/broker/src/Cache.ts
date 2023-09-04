@@ -2,39 +2,33 @@ import { SystemMessage, SystemMessageType } from '@simplified/protocol';
 import { BroadbandSubscriber } from '@simplified/shared';
 import { Logger } from '@streamr/utils';
 import { EventEmitter } from 'events';
-import { MessageMetadata, Stream, StreamrClient } from 'streamr-client';
+import { MessageMetadata } from 'streamr-client';
 
 const logger = new Logger(module);
 
 const LIMIT = 10000;
 
 export class Cache extends EventEmitter {
-	private subscriber: BroadbandSubscriber;
-
 	private records: {
 		message: SystemMessage;
 		metadata: MessageMetadata;
 	}[] = [];
 
 	constructor(
-		private readonly client: StreamrClient,
-		private readonly stream: Stream,
+		private readonly subscriber: BroadbandSubscriber,
 	) {
 		super();
-
-		this.subscriber = new BroadbandSubscriber(
-			this.client,
-			this.stream
-		);
 	}
 
 	public async start() {
-		logger.info('Started');
 		await this.subscriber.subscribe(this.onMessage.bind(this));
+
+		logger.info('Started');
 	}
 
 	public async stop() {
 		await this.subscriber.unsubscribe();
+
 		logger.info('Stopped');
 	}
 
@@ -55,7 +49,9 @@ export class Cache extends EventEmitter {
 		}
 	}
 
-	public get(from: number) {
-		return this.records.filter((record) => record.metadata.timestamp >= from);
+	public get(from: number, to: number) {
+		return this.records.filter((record) =>
+			record.metadata.timestamp >= from &&
+			record.metadata.timestamp < (to || Number.MAX_SAFE_INTEGER));
 	}
 }

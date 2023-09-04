@@ -1,22 +1,24 @@
-import { Stream, StreamrClient } from 'streamr-client';
+import { Logger } from '@streamr/utils';
 import { Listener } from './Listener';
 
+const logger = new Logger(module);
+
 export class Validator {
-
-  private readonly listener: Listener;
-
   constructor(
-    private readonly client: StreamrClient,
-    private readonly stream: Stream
+    private readonly listener: Listener,
   ) {
-    this.listener = new Listener(this.client, this.stream);
+    //
   }
 
   public async start() {
     await this.listener.start();
+
+    logger.info('Started');
   }
 
   public async stop() {
     await this.listener.stop();
+
+    logger.info('Stopped');
   }
 }
