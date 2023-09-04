@@ -58,7 +58,7 @@ export class Cache extends EventEmitter {
 			signature: metadata.signature,
 		});
 
-		this.publisher.publish(confirmation.serialize());
+		await this.publisher.publish(confirmation.serialize());
 	}
 
 	public get(from: number, to: number) {
