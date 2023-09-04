@@ -4,8 +4,6 @@ import { Logger } from '@streamr/utils';
 
 const logger = new Logger(module);
 
-const INTERVAL_FAST = 50;
-const INTERVAL_SLOW = 1000;
 const THRESHOLD = 2000;
 
 export class Sensor {
@@ -16,9 +14,10 @@ export class Sensor {
 	constructor(
 		private readonly id: string,
 		private readonly publisher: BroadbandPublisher,
-		private readonly fillCache: boolean
+		private readonly sensorInterval: number,
+		private readonly rapidInterval: number,
 	) {
-		this.interval = this.fillCache ? INTERVAL_FAST : INTERVAL_SLOW;
+		this.interval = this.rapidInterval || this.sensorInterval;
 	}
 
 	public async start() {
@@ -44,10 +43,10 @@ export class Sensor {
 		this.counter++;
 		await this.publisher.publish(measurement.serialize());
 
-		if (this.fillCache && this.counter === THRESHOLD) {
-			logger.info(`Threshold reached. Switching to slower interval ${JSON.stringify({ THRESHOLD })}`);
+		if (this.rapidInterval && this.counter === THRESHOLD) {
+			logger.info(`Threshold reached. Switching to normal interval ${JSON.stringify({ THRESHOLD })}`);
 			this.stop();
-			this.interval = INTERVAL_SLOW;
+			this.interval = this.sensorInterval;
 			this.start();
 		}
 	}
