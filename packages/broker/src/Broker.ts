@@ -17,19 +17,21 @@ export class Broker {
 
   public async start() {
     await Promise.all([
-      this.sensor.start(),
       this.cache.start(),
       this.recovery.start(),
     ]);
+
+    await this.sensor.start(),
 
     logger.info('Started');
   }
 
   public async stop() {
+    await this.sensor.stop(),
+
     await Promise.all([
       this.recovery.stop(),
       this.cache.stop(),
-      this.sensor.stop(),
     ]);
 
     logger.info('Stopped');
