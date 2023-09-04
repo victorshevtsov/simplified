@@ -1,32 +1,33 @@
-import { SystemMessage, SystemMessageType } from '@simplified/protocol';
-import { StreamSubscriber } from '@simplified/shared';
-import { MessageMetadata, Stream, StreamrClient } from 'streamr-client';
+import { Measurement, SystemMessage, SystemMessageType } from '@simplified/protocol';
+import { BroadbandSubscriber } from '@simplified/shared';
+import { Logger } from '@streamr/utils';
+import { MessageMetadata } from 'streamr-client';
 import { Recovery } from './Recovery';
 
+const logger = new Logger(module);
+
 export class Listener {
-  private readonly subscriber: StreamSubscriber;
-  private readonly recovery: Recovery;
+  private readonly sensors: Map<string, Measurement>
 
   constructor(
-    private readonly client: StreamrClient,
-    private readonly stream: Stream,
+    private readonly sensorSubscriber: BroadbandSubscriber,
+    private readonly recovery?: Recovery,
   ) {
-    this.subscriber = new StreamSubscriber(this.client, this.stream);
-    this.recovery = new Recovery(
-      this.client,
-      this.stream,
-      this.onSystemMessage.bind(this)
-    );
+    this.sensors = new Map<string, Measurement>();
   }
 
   public async start() {
-    await this.subscriber.subscribe(this.onMessage.bind(this));
+    await this.sensorSubscriber.subscribe(this.onMessage.bind(this));
+    await this.recovery?.start(this.onMeasurement);
 
-    await this.recovery.start();
+    logger.info('Started');
   }
 
   public async stop() {
-    await this.recovery.stop();
+    await this.recovery?.stop();
+    await this.sensorSubscriber.unsubscribe();
+
+    logger.info('Stopped');
   }
 
   private async onMessage(
@@ -39,13 +40,26 @@ export class Listener {
       return;
     }
 
-    await this.onSystemMessage(systemMessage, metadata);
+    const measurement = systemMessage as Measurement;
+    await this.onMeasurement(measurement, metadata);
   }
 
-  private async onSystemMessage(
-    systemMessage: SystemMessage,
+  private async onMeasurement(
+    measurement: Measurement,
     metadata: MessageMetadata
   ): Promise<void> {
-    // logger.info('onSystemMessage %s', JSON.stringify(systemMessage));
+    const prevMeasurement = this.sensors.get(measurement.sensorId);
+    if (prevMeasurement &&
+      measurement.seqNum - prevMeasurement.seqNum !== 1) {
+      logger.error(
+        "Unexpected Measurement seqNum",
+        {
+          sensorId: measurement.sensorId,
+          prev: prevMeasurement.seqNum,
+          curr: measurement.seqNum
+        });
+    }
+
+    this.sensors.set(measurement.sensorId, measurement);
   }
 }

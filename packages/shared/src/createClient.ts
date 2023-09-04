@@ -16,19 +16,16 @@ const DEV_NETWORK_CONFIG: StreamrClientConfig = {
 export const createClient = async (privateKey: string, options: CreateClientOptions): Promise<StreamrClient> => {
   logger.info('Creating StreamrClient with options:', { options });
 
-  let config: StreamrClientConfig = {
-    logLevel: 'trace',
-    auth: {
-      privateKey,
-    },
-  };
+  let config: StreamrClientConfig = options.devNetwork
+    ? DEV_NETWORK_CONFIG
+    : { network: {} };
 
-  if (options.devNetwork) {
-    config = {
-      ...DEV_NETWORK_CONFIG,
-      ...config
-    }
-  }
+  config.auth = { privateKey };
+
+  config.network!.webrtcSendBufferMaxMessageCount = 5000;
+  config.network!.webrtcDisallowPrivateAddresses = false;
+  config.gapFill = true
+  config.gapFillTimeout = 30000
 
   // Streamr v8.1.0 does not have externalIp option
   // if (options.externalIp) {
@@ -37,6 +34,7 @@ export const createClient = async (privateKey: string, options: CreateClientOpti
   //   }
   // }
 
+  logger.info('Creating StreamrClient with config:', { config });
   const client = new StreamrClient(config);
   logger.info('StreamrClient created:', { address: await client.getAddress() });
 

@@ -1,3 +1,3 @@
-export * from './StreamPublisher';
-export * from './StreamSubscriber';
+export * from './BroadbandPublisher';
+export * from './BroadbandSubscriber';
 export * from './createClient';

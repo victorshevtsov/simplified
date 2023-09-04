@@ -1,7 +1,4 @@
-import { StreamPublisher } from '@simplified/shared';
 import { Logger } from '@streamr/utils';
-import { Stream, StreamrClient } from 'streamr-client';
-import { v4 as uuid } from 'uuid';
 import { Cache } from './Cache';
 import { Recovery } from './Recovery';
 import { Sensor } from './Sensor';
@@ -10,22 +7,12 @@ const logger = new Logger(module);
 
 export class Broker {
 
-  private readonly streamPublisher: StreamPublisher;
-  private readonly sensor: Sensor;
-  private readonly cache: Cache;
-  private readonly recovery: Recovery;
-
   constructor(
-    private readonly client: StreamrClient,
-    private readonly stream: Stream,
+    private readonly sensor: Sensor,
+    private readonly cache: Cache,
+    private readonly recovery: Recovery,
   ) {
-    this.streamPublisher = new StreamPublisher(
-      this.client,
-      this.stream
-    );
-    this.sensor = new Sensor(uuid(), this.streamPublisher);
-    this.cache = new Cache(this.client, this.stream);
-    this.recovery = new Recovery(this.client, this.stream, this.streamPublisher, this.cache);
+    //
   }
 
   public async start() {
@@ -34,6 +21,8 @@ export class Broker {
       this.cache.start(),
       this.recovery.start(),
     ]);
+
+    logger.info('Started');
   }
 
   public async stop() {
@@ -42,5 +31,7 @@ export class Broker {
       this.cache.stop(),
       this.sensor.stop(),
     ]);
+
+    logger.info('Stopped');
   }
 }
