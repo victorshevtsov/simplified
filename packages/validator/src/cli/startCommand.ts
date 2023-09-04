@@ -25,7 +25,7 @@ export const startCommand = new Command('start')
 	.addOption(privateKeyOption)
 	.addOption(recoveryOption)
 	.action(async (options: Options) => {
-		logger.info('Creating Validator with options:', { options });
+		logger.info(`Creating Validator with options ${JSON.stringify({ options })}`);
 
 		const createClientOptions: CreateClientOptions = {
 			devNetwork: options.devNetwork,

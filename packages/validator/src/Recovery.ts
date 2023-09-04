@@ -132,7 +132,11 @@ export class Recovery {
 		const to = 0;
 		const recoveryRequest = new RecoveryRequest({ requestId: this.requestId, from, to });
 
-		logger.info('Sending RecoveryRequest', { requestId: recoveryRequest.requestId, from: recoveryRequest.from, to: recoveryRequest.to });
+		logger.info(`Sending RecoveryRequest ${JSON.stringify({
+			requestId: recoveryRequest.requestId,
+			from: recoveryRequest.from,
+			to: recoveryRequest.to
+		})}`);
 		await this.client.publish(this.systemStream, recoveryRequest.serialize());
 
 		for (const broker of BROKERS) {
@@ -188,7 +192,7 @@ export class Recovery {
 		} catch (error: any) {
 			if (!this.isRestarting) {
 				this.isRestarting = true;
-				logger.warn('Failed to process RecoveryMessage', { message: error.message });
+				logger.warn(`Failed to process RecoveryMessage ${JSON.stringify({ message: error.message })}`);
 
 				this.activityTimeout.stop();
 				this.waitAndRestart()
@@ -197,12 +201,12 @@ export class Recovery {
 	}
 
 	private async processRecoveryResponse(recoveryResponse: RecoveryResponse, metadata: MessageMetadata, progress: RecoveryProgress) {
-		logger.info('Processing RecoveryResponse',
+		logger.info(`Processing RecoveryResponse ${JSON.stringify(
 			{
 				publisherId: metadata.publisherId,
 				seqNum: recoveryResponse.seqNum,
 				payloadLength: recoveryResponse.payload.length,
-			}
+			})}`
 		);
 
 		if (recoveryResponse.seqNum - progress.lastSeqNum !== 1) {
@@ -222,11 +226,10 @@ export class Recovery {
 
 	private async processRecoveryComplete(recoveryComplete: RecoveryComplete, metadata: MessageMetadata, progress: RecoveryProgress) {
 		logger.info(
-			'Processing RecoveryComplete',
-			{
+			`Processing RecoveryComplete ${JSON.stringify({
 				publisherId: metadata.publisherId,
 				seqNum: recoveryComplete.seqNum,
-			}
+			})}`
 		);
 
 		if (recoveryComplete.seqNum - progress.lastSeqNum !== 1) {

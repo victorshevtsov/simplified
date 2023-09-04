@@ -41,7 +41,7 @@ export class Recovery {
 
 		const recoveryRequest = systemMessage as RecoveryRequest;
 		logger.info(
-			`Received RecoveryRequest: ${JSON.stringify(recoveryRequest)}`
+			`Received RecoveryRequest ${JSON.stringify(recoveryRequest)}`
 		);
 
 		setImmediate(async () => {
@@ -87,12 +87,11 @@ export class Recovery {
 
 		await this.recoveryStream.publish(recoveryResponseSeralized);
 		logger.info(
-			'Published RecoveryResponse',
-			{
+			`Published RecoveryResponse ${JSON.stringify({
 				requestId: recoveryResponse.requestId,
 				seqNum: recoveryResponse.seqNum,
 				bytes: recoveryResponseSeralized.length
-			}
+			})}`
 		);
 	}
 
@@ -102,12 +101,11 @@ export class Recovery {
 
 		await this.recoveryStream.publish(recoveryCompleteSeralized);
 		logger.info(
-			'Published RecoveryComplete',
-			{
+			`Published RecoveryComplete ${JSON.stringify({
 				requestId: recoveryComplete.requestId,
 				seqNum: recoveryComplete.seqNum,
 				bytes: recoveryCompleteSeralized.length
-			}
+			})}`
 		);
 	}
 }

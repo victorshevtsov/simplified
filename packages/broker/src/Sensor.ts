@@ -22,7 +22,7 @@ export class Sensor {
 	}
 
 	public async start() {
-		logger.info('Started', { interval: this.interval });
+		logger.info(`Started ${JSON.stringify({ interval: this.interval })}`);
 		this.timer = setInterval(this.onTimer.bind(this), this.interval);
 	}
 
@@ -45,7 +45,7 @@ export class Sensor {
 		await this.publisher.publish(measurement.serialize());
 
 		if (this.fillCache && this.counter === THRESHOLD) {
-			logger.info('Threshold reached. Switching to slower interval', { THRESHOLD });
+			logger.info(`Threshold reached. Switching to slower interval ${JSON.stringify({ THRESHOLD })}`);
 			this.stop();
 			this.interval = INTERVAL_SLOW;
 			this.start();
