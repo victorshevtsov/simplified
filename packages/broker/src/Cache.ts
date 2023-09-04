@@ -1,5 +1,5 @@
-import { SystemMessage, SystemMessageType } from '@simplified/protocol';
-import { BroadbandSubscriber } from '@simplified/shared';
+import { Confirmation, Measurement, SystemMessage, SystemMessageType } from '@simplified/protocol';
+import { BroadbandPublisher, BroadbandSubscriber } from '@simplified/shared';
 import { Logger } from '@streamr/utils';
 import { EventEmitter } from 'events';
 import { MessageMetadata } from 'streamr-client';
@@ -9,6 +9,7 @@ const logger = new Logger(module);
 const LIMIT = 10000;
 
 export class Cache extends EventEmitter {
+	private counter: number = 0;
 	private records: {
 		message: SystemMessage;
 		metadata: MessageMetadata;
@@ -16,6 +17,7 @@ export class Cache extends EventEmitter {
 
 	constructor(
 		private readonly subscriber: BroadbandSubscriber,
+		private readonly publisher: BroadbandPublisher,
 	) {
 		super();
 	}
@@ -47,6 +49,16 @@ export class Cache extends EventEmitter {
 			this.records.splice(0, this.records.length - LIMIT);
 			this.emit('full');
 		}
+
+		this.counter++;
+		const measurement = systemMessage as Measurement;
+		const confirmation = new Confirmation({
+			seqNum: this.counter,
+			sensorId: measurement.sensorId,
+			signature: metadata.signature,
+		});
+
+		this.publisher.publish(confirmation.serialize());
 	}
 
 	public get(from: number, to: number) {

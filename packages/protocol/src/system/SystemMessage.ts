@@ -11,9 +11,10 @@ const LATEST_VERSION = 1;
 
 export enum SystemMessageType {
 	Measurement = 0,
-	RecoveryRequest = 1,
-	RecoveryResponse = 2,
-	RecoveryComplete = 3,
+	Confirmation = 1,
+	RecoveryRequest = 2,
+	RecoveryResponse = 3,
+	RecoveryComplete = 4,
 }
 
 export interface SystemMessageOptions {

@@ -12,7 +12,8 @@ export default class MeasurementSerializerV1 extends Serializer<Measurement> {
 			message.sensorId,
 			message.seqNum,
 			message.pressure,
-			message.temperature];
+			message.temperature
+		];
 	}
 
 	fromArray(arr: any[]): Measurement {

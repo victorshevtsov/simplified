@@ -1,23 +1,27 @@
-import { Measurement, SystemMessage, SystemMessageType } from '@simplified/protocol';
+import { Confirmation, Measurement, SystemMessage, SystemMessageType } from '@simplified/protocol';
 import { BroadbandSubscriber } from '@simplified/shared';
-import { Logger } from '@streamr/utils';
+import { EthereumAddress, Logger } from '@streamr/utils';
 import { MessageMetadata } from 'streamr-client';
 import { Recovery } from './Recovery';
 
 const logger = new Logger(module);
 
 export class Listener {
-  private readonly sensors: Map<string, Measurement>
+  private readonly measurements: Map<EthereumAddress, Measurement>
+  private readonly confirmations: Map<EthereumAddress, Confirmation>
 
   constructor(
+    private readonly systemSubscriber: BroadbandSubscriber,
     private readonly sensorSubscriber: BroadbandSubscriber,
     private readonly recovery?: Recovery,
   ) {
-    this.sensors = new Map<string, Measurement>();
+    this.measurements = new Map<EthereumAddress, Measurement>();
+    this.confirmations = new Map<EthereumAddress, Confirmation>();
   }
 
   public async start() {
-    await this.sensorSubscriber.subscribe(this.onMessage.bind(this));
+    await this.systemSubscriber.subscribe(this.onSystemMessage.bind(this));
+    await this.sensorSubscriber.subscribe(this.onSensorMessage.bind(this));
     await this.recovery?.start(this.onMeasurement);
 
     logger.info('Started');
@@ -30,7 +34,7 @@ export class Listener {
     logger.info('Stopped');
   }
 
-  private async onMessage(
+  private async onSensorMessage(
     content: unknown,
     metadata: MessageMetadata
   ): Promise<void> {
@@ -44,11 +48,25 @@ export class Listener {
     await this.onMeasurement(measurement, metadata);
   }
 
+  private async onSystemMessage(
+    content: unknown,
+    metadata: MessageMetadata
+  ): Promise<void> {
+
+    const systemMessage = SystemMessage.deserialize(content);
+    if (systemMessage.messageType !== SystemMessageType.Confirmation) {
+      return;
+    }
+
+    const confirmation = systemMessage as Confirmation;
+    await this.onConfirmation(confirmation, metadata);
+  }
+
   private async onMeasurement(
     measurement: Measurement,
     metadata: MessageMetadata
   ): Promise<void> {
-    const prevMeasurement = this.sensors.get(measurement.sensorId);
+    const prevMeasurement = this.measurements.get(metadata.publisherId);
     if (prevMeasurement &&
       measurement.seqNum - prevMeasurement.seqNum !== 1) {
       logger.error(
@@ -60,6 +78,25 @@ export class Listener {
       );
     }
 
-    this.sensors.set(measurement.sensorId, measurement);
+    this.measurements.set(metadata.publisherId, measurement);
+  }
+
+  private async onConfirmation(
+    confirtmation: Confirmation,
+    metadata: MessageMetadata
+  ): Promise<void> {
+    const prevMeasurement = this.confirmations.get(metadata.publisherId);
+    if (prevMeasurement &&
+      confirtmation.seqNum - prevMeasurement.seqNum !== 1) {
+      logger.error(
+        `Unexpected Confrmation seqNum ${JSON.stringify({
+          sensorId: confirtmation.sensorId,
+          prev: prevMeasurement.seqNum,
+          curr: confirtmation.seqNum
+        })}`
+      );
+    }
+
+    this.confirmations.set(metadata.publisherId, confirtmation);
   }
 }
