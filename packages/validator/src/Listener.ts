@@ -1,5 +1,5 @@
 import { Confirmation, Measurement, SystemMessage, SystemMessageType } from '@simplified/protocol';
-import { BroadbandSubscriber } from '@simplified/shared';
+import { BroadbandSubscriber, sleep } from '@simplified/shared';
 import { EthereumAddress, Logger } from '@streamr/utils';
 import { MessageMetadata } from 'streamr-client';
 import { Recovery } from './Recovery';
@@ -78,6 +78,8 @@ export class Listener {
       );
     }
 
+    await sleep(100);
+
     this.measurements.set(metadata.publisherId, measurement);
   }
 
@@ -85,17 +87,19 @@ export class Listener {
     confirtmation: Confirmation,
     metadata: MessageMetadata
   ): Promise<void> {
-    const prevMeasurement = this.confirmations.get(metadata.publisherId);
-    if (prevMeasurement &&
-      confirtmation.seqNum - prevMeasurement.seqNum !== 1) {
+    const prevConfirmation = this.confirmations.get(metadata.publisherId);
+    if (prevConfirmation &&
+      confirtmation.seqNum - prevConfirmation.seqNum !== 1) {
       logger.error(
         `Unexpected Confrmation seqNum ${JSON.stringify({
           publisherId: metadata.publisherId,
-          prev: prevMeasurement.seqNum,
+          prev: prevConfirmation.seqNum,
           curr: confirtmation.seqNum
         })}`
       );
     }
+
+    await sleep(100);
 
     this.confirmations.set(metadata.publisherId, confirtmation);
   }

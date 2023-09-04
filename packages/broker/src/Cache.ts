@@ -1,5 +1,5 @@
 import { Confirmation, Measurement, SystemMessage, SystemMessageType } from '@simplified/protocol';
-import { BroadbandPublisher, BroadbandSubscriber } from '@simplified/shared';
+import { BroadbandPublisher, BroadbandSubscriber, sleep } from '@simplified/shared';
 import { Logger } from '@streamr/utils';
 import { EventEmitter } from 'events';
 import { MessageMetadata } from 'streamr-client';
@@ -50,13 +50,15 @@ export class Cache extends EventEmitter {
 			this.emit('full');
 		}
 
-		this.counter++;
 		const measurement = systemMessage as Measurement;
 		const confirmation = new Confirmation({
 			seqNum: this.counter,
 			sensorId: measurement.sensorId,
 			signature: metadata.signature,
 		});
+		this.counter++;
+
+		await sleep(100);
 
 		await this.publisher.publish(confirmation.serialize());
 	}
