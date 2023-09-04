@@ -1,8 +1,11 @@
 import { Confirmation, Measurement, SystemMessage, SystemMessageType } from '@simplified/protocol';
-import { BroadbandSubscriber, sleep } from '@simplified/shared';
+import { BroadbandSubscriber } from '@simplified/shared';
 import { EthereumAddress, Logger } from '@streamr/utils';
 import { MessageMetadata } from 'streamr-client';
 import { Recovery } from './Recovery';
+
+const LOG_EVERY_CONFIRMATION = 1000;
+const LOG_EVERY_MEASUREMENT = 1000;
 
 const logger = new Logger(module);
 
@@ -79,24 +82,38 @@ export class Listener {
     }
 
     this.measurements.set(metadata.publisherId, measurement);
+
+    if (measurement.seqNum % LOG_EVERY_MEASUREMENT === 0) {
+      logger.info(`Measurement ${JSON.stringify({
+        publisherId: metadata.publisherId,
+        seqNum: measurement.seqNum,
+      })}`)
+    }
   }
 
   private async onConfirmation(
-    confirtmation: Confirmation,
+    confirmation: Confirmation,
     metadata: MessageMetadata
   ): Promise<void> {
     const prevConfirmation = this.confirmations.get(metadata.publisherId);
     if (prevConfirmation &&
-      confirtmation.seqNum - prevConfirmation.seqNum !== 1) {
+      confirmation.seqNum - prevConfirmation.seqNum !== 1) {
       logger.error(
         `Unexpected Confrmation seqNum ${JSON.stringify({
           publisherId: metadata.publisherId,
           prev: prevConfirmation.seqNum,
-          curr: confirtmation.seqNum
+          curr: confirmation.seqNum
         })}`
       );
     }
 
-    this.confirmations.set(metadata.publisherId, confirtmation);
+    this.confirmations.set(metadata.publisherId, confirmation);
+
+    if (confirmation.seqNum % LOG_EVERY_CONFIRMATION === 0) {
+      logger.info(`Confirmation ${JSON.stringify({
+        publisherId: metadata.publisherId,
+        seqNum: confirmation.seqNum,
+      })}`)
+    }
   }
 }
