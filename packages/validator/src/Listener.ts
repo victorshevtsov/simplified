@@ -76,7 +76,8 @@ export class Listener {
         `Unexpected Measurement seqNum ${JSON.stringify({
           publisherId: metadata.publisherId,
           prev: prevMeasurement.seqNum,
-          curr: measurement.seqNum
+          curr: measurement.seqNum,
+          lost: measurement.seqNum - prevMeasurement.seqNum,
         })}`
       );
     }
@@ -102,7 +103,8 @@ export class Listener {
         `Unexpected Confrmation seqNum ${JSON.stringify({
           publisherId: metadata.publisherId,
           prev: prevConfirmation.seqNum,
-          curr: confirmation.seqNum
+          curr: confirmation.seqNum,
+          lost: confirmation.seqNum - prevConfirmation.seqNum,
         })}`
       );
     }
