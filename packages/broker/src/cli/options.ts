@@ -16,13 +16,6 @@ export const devNetworkOption = new Option(
 	.env('DEV_NETWORK')
 	.default(false);
 
-export const fillCacheOption = new Option(
-	'--fill-cache',
-	'Fill the Cache at startup'
-)
-	.env('FILL_CACHE')
-	.default(false);
-
 export const externalIpOption = new Option(
 	'--external-ip <ip>',
 	'External IP address'
@@ -35,3 +28,17 @@ export const privateKeyOption = new Option(
 )
 	.env('PRIVATE_KEY')
 	.makeOptionMandatory();
+
+export const rapidIntervalOption = new Option(
+	'--rapid-interval <ms>',
+	'Rapid Interval to fill the cache faster (milliseconds). Set to 0 to disable the Rapid cache filling'
+)
+	.env('RAPID_INTERVAL')
+	.default(0);
+
+export const sensorIntervalOption = new Option(
+	'--sensor-interval <ms>',
+	'Sensor Interval (milliseconds)'
+)
+	.env('SENSOR_INTERVAL')
+	.default(1000);
