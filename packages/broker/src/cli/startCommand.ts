@@ -45,11 +45,12 @@ export const startCommand = new Command('start')
 		// const sensorStream = systemStream;
 		// const recoveryStream = systemStream;
 
+		const systemPublisher = new BroadbandPublisher(client, systemStream);
 		const sensorPublisher = new BroadbandPublisher(client, sensorStream);
 		const sensorSubscriber = new BroadbandSubscriber(client, sensorStream);
 
 		const sensor = new Sensor(uuid(), sensorPublisher, options.fillCache);
-		const cache = new Cache(sensorSubscriber);
+		const cache = new Cache(sensorSubscriber, systemPublisher);
 		const recovery = new Recovery(client, systemStream, recoveryStream, cache);
 
 		const broker = new Broker(sensor, cache, recovery);

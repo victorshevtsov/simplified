@@ -44,13 +44,14 @@ export const startCommand = new Command('start')
 		// const sensorStream = systemStream;
 		// const recoveryStream = systemStream;
 
+		const systemSubscriber = new BroadbandSubscriber(client, systemStream);
 		const sensorSubscriber = new BroadbandSubscriber(client, sensorStream);
 
 		const recovery = options.recovery
 			? new Recovery(client, systemStream, recoveryStream)
 			: undefined;
 
-		const listener = new Listener(sensorSubscriber, recovery);
+		const listener = new Listener(systemSubscriber, sensorSubscriber, recovery);
 
 		const validator = new Validator(listener);
 		await validator.start();
