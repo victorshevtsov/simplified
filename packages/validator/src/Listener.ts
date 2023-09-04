@@ -71,7 +71,7 @@ export class Listener {
       measurement.seqNum - prevMeasurement.seqNum !== 1) {
       logger.error(
         `Unexpected Measurement seqNum ${JSON.stringify({
-          sensorId: measurement.sensorId,
+          publisherId: metadata.publisherId,
           prev: prevMeasurement.seqNum,
           curr: measurement.seqNum
         })}`
@@ -90,7 +90,7 @@ export class Listener {
       confirtmation.seqNum - prevMeasurement.seqNum !== 1) {
       logger.error(
         `Unexpected Confrmation seqNum ${JSON.stringify({
-          sensorId: confirtmation.sensorId,
+          publisherId: metadata.publisherId,
           prev: prevMeasurement.seqNum,
           curr: confirtmation.seqNum
         })}`
