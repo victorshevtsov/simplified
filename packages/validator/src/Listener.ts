@@ -25,7 +25,7 @@ export class Listener {
   public async start() {
     await this.measurementSubscriber.subscribe(this.onMeasurementMessage.bind(this));
     await this.confirmationSubscriber.subscribe(this.onConfirmationMessage.bind(this));
-    await this.recovery?.start(this.onMeasurement);
+    await this.recovery?.start(this.onMeasurement.bind(this));
     this.metricsTimer = setInterval(this.logMetrics.bind(this), LOG_METRICS_INTERVAL);
 
     logger.info('Started');
@@ -52,7 +52,7 @@ export class Listener {
     }
 
     const measurement = systemMessage as Measurement;
-    await this.onMeasurement(measurement, metadata);
+    await this.onMeasurement(measurement, metadata, false);
   }
 
   private async onConfirmationMessage(
@@ -71,9 +71,12 @@ export class Listener {
 
   private async onMeasurement(
     measurement: Measurement,
-    metadata: MessageMetadata
+    metadata: MessageMetadata,
+    isRecovery: boolean,
   ): Promise<void> {
-    this.measurementMetrics.update(metadata.publisherId, measurement.seqNum);
+    if (!isRecovery) {
+      this.measurementMetrics.update(metadata.publisherId, measurement.seqNum);
+    }
   }
 
   private async onConfirmation(

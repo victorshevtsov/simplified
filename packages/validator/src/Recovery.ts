@@ -53,7 +53,11 @@ const logger = new Logger(module);
 export class Recovery {
 	private requestId?: string;
 	private subscription?: Subscription;
-	private onMeasurement?: (measurement: Measurement, metadata: MessageMetadata) => Promise<void>;
+	private onMeasurement?: (
+		measurement: Measurement,
+		metadata: MessageMetadata,
+		isRecovery: boolean
+	) => Promise<void>;
 
 	private progresses: Map<EthereumAddress, RecoveryProgress> = new Map();
 	private isRestarting: boolean = false;
@@ -70,7 +74,11 @@ export class Recovery {
 	}
 
 	public async start(
-		onMeasurement: (measurement: Measurement, metadata: MessageMetadata) => Promise<void>
+		onMeasurement: (
+			measurement: Measurement,
+			metadata: MessageMetadata,
+			isRecovery: boolean,
+		) => Promise<void>
 	) {
 		this.onMeasurement = onMeasurement;
 		this.subscription = await this.client.subscribe(this.recoveryStream, this.onRecoveryMessage.bind(this));
@@ -216,7 +224,7 @@ export class Recovery {
 		for await (const [msg, msgMetadata] of recoveryResponse.payload) {
 			if (msg.messageType === SystemMessageType.Measurement) {
 				const measurement = msg as Measurement;
-				await this.onMeasurement?.(measurement, msgMetadata as MessageMetadata);
+				await this.onMeasurement?.(measurement, msgMetadata as MessageMetadata, true);
 				progress.timestamp = msgMetadata.timestamp;
 			}
 		}

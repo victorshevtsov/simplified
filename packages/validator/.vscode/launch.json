@@ -1,0 +1,49 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Validator-1",
+      "console": "integratedTerminal",
+      "preLaunchTask": "npm: build",
+      "program": "${workspaceFolder}/dist/bin/simplified-validator.js",
+      "args": [
+        "start",
+        "--private-key",
+        "cc00000000000000000000000000000000000000000000000000000000000011",
+        "--recovery",
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Validator-2",
+      "console": "integratedTerminal",
+      "preLaunchTask": "npm: build",
+      "program": "${workspaceFolder}/dist/bin/simplified-validator.js",
+      "args": [
+        "start",
+        "--private-key",
+        "cc00000000000000000000000000000000000000000000000000000000000012",
+        ">",
+        "~/validator-2.log"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Validator-3",
+      "console": "integratedTerminal",
+      "preLaunchTask": "npm: build",
+      "program": "${workspaceFolder}/dist/bin/simplified-validator.js",
+      "args": [
+        "start",
+        "--private-key",
+        "cc00000000000000000000000000000000000000000000000000000000000013",
+        ">",
+        "~/validator-3.log"
+      ]
+    },
+  ]
+}
