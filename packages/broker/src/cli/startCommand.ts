@@ -57,4 +57,9 @@ export const startCommand = new Command('start')
 
 		const broker = new Broker(sensor, cache, recovery);
 		await broker.start();
+
+		process.on('SIGINT', async () => {
+			await broker.stop();
+			await client.destroy();
+		});
 	});

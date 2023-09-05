@@ -22,10 +22,10 @@ export const createClient = async (privateKey: string, options: CreateClientOpti
 
   config.auth = { privateKey };
 
-  config.network!.webrtcSendBufferMaxMessageCount = 5000;
-  config.network!.webrtcDisallowPrivateAddresses = false;
-  config.gapFill = true
-  config.gapFillTimeout = 30000
+  // config.network!.webrtcSendBufferMaxMessageCount = 5000;
+  // config.network!.webrtcDisallowPrivateAddresses = false;
+  // config.gapFill = true
+  // config.gapFillTimeout = 30000
 
   // Streamr v8.1.0 does not have externalIp option
   // if (options.externalIp) {
