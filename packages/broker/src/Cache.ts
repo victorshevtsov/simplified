@@ -71,7 +71,7 @@ export class Cache extends EventEmitter {
 
 		const serializedConfirmation = confirmation.serialize();
 		const confirmationBytes = serializedConfirmation.length;
-		this.confirmationMetrics.update(metadata.publisherId, this.counter, confirmationBytes);
+		this.confirmationMetrics.update('', this.counter, confirmationBytes);
 
 		this.counter++;
 
