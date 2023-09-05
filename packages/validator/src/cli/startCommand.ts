@@ -33,25 +33,27 @@ export const startCommand = new Command('start')
 		}
 
 		const systemStreamId = `${options.baseAddress.toString()}/system`;
-		const sensorStreamId = `${options.baseAddress.toString()}/sensor`;
+		const measurementStreamId = `${options.baseAddress.toString()}/measurement`;
+		const confirmationStreamId = `${options.baseAddress.toString()}/confirmation`;
 		const recoveryStreamId = `${options.baseAddress.toString()}/recovery`;
 
 		const client = await createClient(options.privateKey, createClientOptions);
 
 		const systemStream = await client.getStream(systemStreamId);
-		const sensorStream = await client.getStream(sensorStreamId);
+		const measurementStream = await client.getStream(measurementStreamId);
+		const confirmationStream = await client.getStream(confirmationStreamId);
 		const recoveryStream = await client.getStream(recoveryStreamId);
 		// const sensorStream = systemStream;
 		// const recoveryStream = systemStream;
 
-		const systemSubscriber = new BroadbandSubscriber(client, systemStream);
-		const sensorSubscriber = new BroadbandSubscriber(client, sensorStream);
+		const measurementSubscriber = new BroadbandSubscriber(client, measurementStream);
+		const confirmationSubscriber = new BroadbandSubscriber(client, confirmationStream);
 
 		const recovery = options.recovery
 			? new Recovery(client, systemStream, recoveryStream)
 			: undefined;
 
-		const listener = new Listener(systemSubscriber, sensorSubscriber, recovery);
+		const listener = new Listener(measurementSubscriber, confirmationSubscriber, recovery);
 
 		const validator = new Validator(listener);
 		await validator.start();

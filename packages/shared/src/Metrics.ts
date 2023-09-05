@@ -37,6 +37,7 @@ export class Metrics {
 
   public get summary() {
     return {
+      subject: this.subject,
       count: this.count,
       lost: this.lost,
     }

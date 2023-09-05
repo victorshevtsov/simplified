@@ -19,15 +19,15 @@ export class Cache extends EventEmitter {
 	private metricsTimer?: NodeJS.Timer;
 
 	constructor(
-		private readonly subscriber: BroadbandSubscriber,
-		private readonly publisher: BroadbandPublisher,
+		private readonly measurementSubscriber: BroadbandSubscriber,
+		private readonly confirmationPublisher: BroadbandPublisher,
 	) {
 		super();
 		this.measurementMetrics = new Metrics("Measurement");
 	}
 
 	public async start() {
-		await this.subscriber.subscribe(this.onMessage.bind(this));
+		await this.measurementSubscriber.subscribe(this.onMessage.bind(this));
 		this.metricsTimer = setInterval(this.logMetrics.bind(this), LOG_METRICS_INTERVAL);
 
 		logger.info('Started');
@@ -35,7 +35,7 @@ export class Cache extends EventEmitter {
 
 	public async stop() {
 		clearInterval(this.metricsTimer);
-		await this.subscriber.unsubscribe();
+		await this.measurementSubscriber.unsubscribe();
 
 		logger.info('Stopped');
 		this.logMetrics();
@@ -68,7 +68,7 @@ export class Cache extends EventEmitter {
 		});
 		this.counter++;
 
-		await this.publisher.publish(confirmation.serialize());
+		await this.confirmationPublisher.publish(confirmation.serialize());
 	}
 
 	public get(from: number, to: number) {

@@ -32,14 +32,14 @@ export const startCommand = new Command('start')
 			externalIp: options.externalIp,
 		}
 
-		const sensorStreamId = `${options.baseAddress.toString()}/sensor`;
+		const measurementStreamId = `${options.baseAddress.toString()}/measurement`;
 
 		const client = await createClient(options.privateKey, createClientOptions);
 
-		const sensorStream = await client.getStream(sensorStreamId);
-		const sensorPublisher = new BroadbandPublisher(client, sensorStream);
+		const measurementStream = await client.getStream(measurementStreamId);
+		const measurementPublisher = new BroadbandPublisher(client, measurementStream);
 
-		const sensor = new Sensor(uuid(), sensorPublisher, options.sensorInterval, options.rapidInterval);
+		const sensor = new Sensor(uuid(), measurementPublisher, options.sensorInterval, options.rapidInterval);
 
 		await sensor.start();
 

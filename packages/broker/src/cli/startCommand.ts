@@ -30,21 +30,23 @@ export const startCommand = new Command('start')
 		}
 
 		const systemStreamId = `${options.baseAddress.toString()}/system`;
-		const sensorStreamId = `${options.baseAddress.toString()}/sensor`;
+		const measurementStreamId = `${options.baseAddress.toString()}/measurement`;
+		const confirmationStreamId = `${options.baseAddress.toString()}/confirmation`;
 		const recoveryStreamId = `${options.baseAddress.toString()}/recovery`;
 
 		const client = await createClient(options.privateKey, createClientOptions);
 
 		const systemStream = await client.getStream(systemStreamId);
-		const sensorStream = await client.getStream(sensorStreamId);
+		const confirmationStream = await client.getStream(confirmationStreamId);
+		const measurementStream = await client.getStream(measurementStreamId);
 		const recoveryStream = await client.getStream(recoveryStreamId);
 		// const sensorStream = systemStream;
 		// const recoveryStream = systemStream;
 
-		const systemPublisher = new BroadbandPublisher(client, systemStream);
-		const sensorSubscriber = new BroadbandSubscriber(client, sensorStream);
+		const confirmationPublisher = new BroadbandPublisher(client, confirmationStream);
+		const measurementSubscriber = new BroadbandSubscriber(client, measurementStream);
 
-		const cache = new Cache(sensorSubscriber, systemPublisher);
+		const cache = new Cache(measurementSubscriber, confirmationPublisher);
 		const recovery = new Recovery(client, systemStream, recoveryStream, cache);
 
 		const broker = new Broker(cache, recovery);

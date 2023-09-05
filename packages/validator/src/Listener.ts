@@ -14,8 +14,8 @@ export class Listener {
   private metricsTimer?: NodeJS.Timer;
 
   constructor(
-    private readonly systemSubscriber: BroadbandSubscriber,
-    private readonly sensorSubscriber: BroadbandSubscriber,
+    private readonly measurementSubscriber: BroadbandSubscriber,
+    private readonly confirmationSubscriber: BroadbandSubscriber,
     private readonly recovery?: Recovery,
   ) {
     this.measurementMetrics = new Metrics("Measurement");
@@ -23,8 +23,8 @@ export class Listener {
   }
 
   public async start() {
-    await this.systemSubscriber.subscribe(this.onSystemMessage.bind(this));
-    await this.sensorSubscriber.subscribe(this.onSensorMessage.bind(this));
+    await this.measurementSubscriber.subscribe(this.onMeasurementMessage.bind(this));
+    await this.confirmationSubscriber.subscribe(this.onConfirmationMessage.bind(this));
     await this.recovery?.start(this.onMeasurement);
     this.metricsTimer = setInterval(this.logMetrics.bind(this), LOG_METRICS_INTERVAL);
 
@@ -34,14 +34,14 @@ export class Listener {
   public async stop() {
     clearInterval(this.metricsTimer);
     await this.recovery?.stop();
-    await this.systemSubscriber.unsubscribe();
-    await this.sensorSubscriber.unsubscribe();
+    await this.measurementSubscriber.unsubscribe();
+    await this.confirmationSubscriber.unsubscribe();
 
     logger.info('Stopped');
     this.logMetrics();
   }
 
-  private async onSensorMessage(
+  private async onMeasurementMessage(
     content: unknown,
     metadata: MessageMetadata
   ): Promise<void> {
@@ -55,7 +55,7 @@ export class Listener {
     await this.onMeasurement(measurement, metadata);
   }
 
-  private async onSystemMessage(
+  private async onConfirmationMessage(
     content: unknown,
     metadata: MessageMetadata
   ): Promise<void> {
@@ -84,9 +84,9 @@ export class Listener {
   }
 
   private logMetrics() {
-    logger.info(`Metrics ${JSON.stringify({
-      measurements: this.measurementMetrics.summary,
-      confirmations: this.confirmationMetrics.summary,
-    })}`);
+    logger.info(`Metrics ${JSON.stringify([
+      this.measurementMetrics.summary,
+      this.confirmationMetrics.summary,
+    ])}`);
   }
 }
