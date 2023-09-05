@@ -1,6 +1,6 @@
 import { Confirmation, Measurement, SystemMessage, SystemMessageType } from '@simplified/protocol';
-import { BroadbandPublisher, BroadbandSubscriber, sleep } from '@simplified/shared';
-import { EthereumAddress, Logger } from '@streamr/utils';
+import { BroadbandPublisher, BroadbandSubscriber, Metrics } from '@simplified/shared';
+import { Logger } from '@streamr/utils';
 import { EventEmitter } from 'events';
 import { MessageMetadata } from 'streamr-client';
 
@@ -9,19 +9,13 @@ const logger = new Logger(module);
 const LIMIT = 10000;
 const LOG_METRICS_INTERVAL = 10 * 1000;
 
-interface Metrics {
-	measurementsReceived: number;
-	measurementsLost: number;
-}
-
 export class Cache extends EventEmitter {
 	private counter: number = 0;
 	private records: {
 		message: SystemMessage;
 		metadata: MessageMetadata;
 	}[] = [];
-	private readonly measurements: Map<EthereumAddress, Measurement>
-	private readonly metrics: Metrics;
+	private readonly measurementMetrics: Metrics;
 	private metricsTimer?: NodeJS.Timer;
 
 	constructor(
@@ -29,11 +23,7 @@ export class Cache extends EventEmitter {
 		private readonly publisher: BroadbandPublisher,
 	) {
 		super();
-		this.measurements = new Map<EthereumAddress, Measurement>();
-		this.metrics = {
-			measurementsReceived: 0,
-			measurementsLost: 0,
-		}
+		this.measurementMetrics = new Metrics("Measurement");
 	}
 
 	public async start() {
@@ -68,25 +58,8 @@ export class Cache extends EventEmitter {
 		}
 
 		const measurement = systemMessage as Measurement;
-		this.metrics.measurementsReceived++;
 
-		const prevMeasurement = this.measurements.get(metadata.publisherId);
-		if (prevMeasurement &&
-			measurement.seqNum - prevMeasurement.seqNum > 1) {
-			const lost = measurement.seqNum - prevMeasurement.seqNum;
-			this.metrics.measurementsLost += lost;
-
-			logger.error(
-				`Unexpected Measurement seqNum ${JSON.stringify({
-					publisherId: metadata.publisherId,
-					prev: prevMeasurement.seqNum,
-					curr: measurement.seqNum,
-					lost,
-				})}`
-			);
-		}
-
-		this.measurements.set(metadata.publisherId, measurement);
+		this.measurementMetrics.update(metadata.publisherId, measurement.seqNum);
 
 		const confirmation = new Confirmation({
 			seqNum: this.counter,
@@ -105,6 +78,6 @@ export class Cache extends EventEmitter {
 	}
 
 	private logMetrics() {
-		logger.info(`Metrics ${JSON.stringify(this.metrics)}`);
+		logger.info(`Metrics ${JSON.stringify(this.measurementMetrics.summary)}`);
 	}
 }
