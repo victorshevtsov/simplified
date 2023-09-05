@@ -55,4 +55,9 @@ export const startCommand = new Command('start')
 
 		const validator = new Validator(listener);
 		await validator.start();
+
+		process.on('SIGINT', async () => {
+			await validator.stop();
+			await client.destroy();
+		});
 	});
