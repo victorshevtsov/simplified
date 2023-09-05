@@ -17,7 +17,7 @@ export class Broker {
 
   public async start() {
     await Promise.all([
-      // this.cache.start(),
+      this.cache.start(),
       this.recovery.start(),
     ]);
 
@@ -31,7 +31,7 @@ export class Broker {
 
     await Promise.all([
       this.recovery.stop(),
-      // this.cache.stop(),
+      this.cache.stop(),
     ]);
 
     logger.info('Stopped');
