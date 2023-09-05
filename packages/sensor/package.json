@@ -1,11 +1,8 @@
 {
-  "name": "@simplified/broker",
+  "name": "@simplified/sensor",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "bin": {
-    "simplified-broker": "./dist/bin/simplified-broker.js"
-  },
   "scripts": {
     "clean": "del dist node_modules",
     "build": "tsc",
@@ -16,14 +13,14 @@
   "license": "ISC",
   "dependencies": {
     "@simplified/protocol": "^1.0.0",
-    "@simplified/shared": "^1.0.0",
     "@streamr/utils": "^8.5.5",
     "commander": "^11.0.0",
     "dotenv": "^16.3.1",
-    "streamr-client": "^8.5.5"
+    "streamr-client": "^8.5.5",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
-    "@types/node": "^20.4.9",
+    "@types/uuid": "^9.0.2",
     "typescript": "^5.1.6"
   }
 }

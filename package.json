@@ -6,6 +6,12 @@
   "scripts": {
     "clean": "npm run clean --workspaces && del node_modules",
     "build": "npm run build --workspaces",
+    "sensor-1": "node ./packages/sensor/dist/bin/simplified-sensor.js start --private-key aa00000000000000000000000000000000000000000000000000000000000001 --base-address 0xa156eda7dcd689ac725ce9595d4505bf28256454",
+    "sensor-2": "node ./packages/sensor/dist/bin/simplified-sensor.js start --private-key aa00000000000000000000000000000000000000000000000000000000000002 --base-address 0xa156eda7dcd689ac725ce9595d4505bf28256454",
+    "sensor-3": "node ./packages/sensor/dist/bin/simplified-sensor.js start --private-key aa00000000000000000000000000000000000000000000000000000000000003 --base-address 0xa156eda7dcd689ac725ce9595d4505bf28256454",
+    "sensor-4": "node ./packages/sensor/dist/bin/simplified-sensor.js start --private-key aa00000000000000000000000000000000000000000000000000000000000004 --base-address 0xa156eda7dcd689ac725ce9595d4505bf28256454",
+    "sensor-5": "node ./packages/sensor/dist/bin/simplified-sensor.js start --private-key aa00000000000000000000000000000000000000000000000000000000000005 --base-address 0xa156eda7dcd689ac725ce9595d4505bf28256454",
+    "sensor-6": "node ./packages/sensor/dist/bin/simplified-sensor.js start --private-key aa00000000000000000000000000000000000000000000000000000000000006 --base-address 0xa156eda7dcd689ac725ce9595d4505bf28256454",
     "broker-1": "node ./packages/broker/dist/bin/simplified-broker.js start --private-key bb00000000000000000000000000000000000000000000000000000000000001 --base-address 0xa156eda7dcd689ac725ce9595d4505bf28256454",
     "broker-2": "node ./packages/broker/dist/bin/simplified-broker.js start --private-key bb00000000000000000000000000000000000000000000000000000000000002 --base-address 0xa156eda7dcd689ac725ce9595d4505bf28256454",
     "broker-3": "node ./packages/broker/dist/bin/simplified-broker.js start --private-key bb00000000000000000000000000000000000000000000000000000000000003 --base-address 0xa156eda7dcd689ac725ce9595d4505bf28256454",
