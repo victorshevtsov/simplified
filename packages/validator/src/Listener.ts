@@ -10,9 +10,9 @@ const logger = new Logger(module);
 
 interface Metrics {
   measurementsReceived: number;
-  confirmationReceived: number;
+  confirmationsReceived: number;
   measurementsLost: number;
-  confirmationLost: number;
+  confirmationsLost: number;
 }
 
 export class Listener {
@@ -31,8 +31,8 @@ export class Listener {
     this.metrics = {
       measurementsReceived: 0,
       measurementsLost: 0,
-      confirmationReceived: 0,
-      confirmationLost: 0,
+      confirmationsReceived: 0,
+      confirmationsLost: 0,
     };
   }
 
@@ -112,13 +112,13 @@ export class Listener {
     confirmation: Confirmation,
     metadata: MessageMetadata
   ): Promise<void> {
-    this.metrics.confirmationReceived++;
+    this.metrics.confirmationsReceived++;
 
     const prevConfirmation = this.confirmations.get(metadata.publisherId);
     if (prevConfirmation &&
       confirmation.seqNum - prevConfirmation.seqNum > 1) {
       const lost = confirmation.seqNum - prevConfirmation.seqNum;
-      this.metrics.confirmationLost += lost;
+      this.metrics.confirmationsLost += lost;
 
       logger.error(
         `Unexpected Confrmation seqNum ${JSON.stringify({
