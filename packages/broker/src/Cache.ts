@@ -16,6 +16,7 @@ export class Cache extends EventEmitter {
 		metadata: MessageMetadata;
 	}[] = [];
 	private readonly measurementMetrics: Metrics;
+	private readonly confirmationMetrics: Metrics;
 	private metricsTimer?: NodeJS.Timer;
 
 	constructor(
@@ -24,6 +25,7 @@ export class Cache extends EventEmitter {
 	) {
 		super();
 		this.measurementMetrics = new Metrics("Measurement");
+		this.confirmationMetrics = new Metrics("Confirmation");
 	}
 
 	public async start() {
@@ -58,17 +60,22 @@ export class Cache extends EventEmitter {
 		}
 
 		const measurement = systemMessage as Measurement;
-
-		this.measurementMetrics.update(metadata.publisherId, measurement.seqNum);
+		const measurementBytes = (content as string).length;
+		this.measurementMetrics.update(metadata.publisherId, measurement.seqNum, measurementBytes);
 
 		const confirmation = new Confirmation({
 			seqNum: this.counter,
 			sensorId: measurement.sensorId,
 			signature: metadata.signature,
 		});
+
+		const serializedConfirmation = confirmation.serialize();
+		const confirmationBytes = serializedConfirmation.length;
+		this.confirmationMetrics.update(metadata.publisherId, this.counter, confirmationBytes);
+
 		this.counter++;
 
-		await this.confirmationPublisher.publish(confirmation.serialize());
+		await this.confirmationPublisher.publish(serializedConfirmation);
 	}
 
 	public get(from: number, to: number) {
@@ -78,6 +85,10 @@ export class Cache extends EventEmitter {
 	}
 
 	private logMetrics() {
-		logger.info(`Metrics ${JSON.stringify(this.measurementMetrics.summary)}`);
+		const metrics = [
+			this.measurementMetrics.summary,
+			this.confirmationMetrics.summary,
+		];
+		logger.info(`Metrics ${JSON.stringify(metrics)}`);
 	}
 }

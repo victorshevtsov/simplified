@@ -52,7 +52,10 @@ export class Listener {
     }
 
     const measurement = systemMessage as Measurement;
-    await this.onMeasurement(measurement, metadata, false);
+    const bytes = (content as string).length;
+    this.measurementMetrics.update(metadata.publisherId, measurement.seqNum, bytes);
+
+    await this.onMeasurement(measurement, metadata);
   }
 
   private async onConfirmationMessage(
@@ -66,30 +69,31 @@ export class Listener {
     }
 
     const confirmation = systemMessage as Confirmation;
+    const bytes = (content as string).length;
+    this.confirmationMetrics.update(metadata.publisherId, confirmation.seqNum, bytes);
+
     await this.onConfirmation(confirmation, metadata);
   }
 
   private async onMeasurement(
     measurement: Measurement,
-    metadata: MessageMetadata,
-    isRecovery: boolean,
+    metadata: MessageMetadata
   ): Promise<void> {
-    if (!isRecovery) {
-      this.measurementMetrics.update(metadata.publisherId, measurement.seqNum);
-    }
+    //
   }
 
   private async onConfirmation(
     confirmation: Confirmation,
     metadata: MessageMetadata
   ): Promise<void> {
-    this.confirmationMetrics.update(metadata.publisherId, confirmation.seqNum);
+    //
   }
 
   private logMetrics() {
-    logger.info(`Metrics ${JSON.stringify([
+    const metrics = [
       this.measurementMetrics.summary,
       this.confirmationMetrics.summary,
-    ])}`);
+    ];
+    logger.info(`Metrics ${JSON.stringify(metrics)}`);
   }
 }

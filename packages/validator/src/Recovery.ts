@@ -55,8 +55,7 @@ export class Recovery {
 	private subscription?: Subscription;
 	private onMeasurement?: (
 		measurement: Measurement,
-		metadata: MessageMetadata,
-		isRecovery: boolean
+		metadata: MessageMetadata
 	) => Promise<void>;
 
 	private progresses: Map<EthereumAddress, RecoveryProgress> = new Map();
@@ -77,7 +76,6 @@ export class Recovery {
 		onMeasurement: (
 			measurement: Measurement,
 			metadata: MessageMetadata,
-			isRecovery: boolean,
 		) => Promise<void>
 	) {
 		this.onMeasurement = onMeasurement;
@@ -224,7 +222,7 @@ export class Recovery {
 		for await (const [msg, msgMetadata] of recoveryResponse.payload) {
 			if (msg.messageType === SystemMessageType.Measurement) {
 				const measurement = msg as Measurement;
-				await this.onMeasurement?.(measurement, msgMetadata as MessageMetadata, true);
+				await this.onMeasurement?.(measurement, msgMetadata as MessageMetadata);
 				progress.timestamp = msgMetadata.timestamp;
 			}
 		}

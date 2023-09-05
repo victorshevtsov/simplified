@@ -4,6 +4,7 @@ const logger = new Logger(module);
 
 export class Metrics {
   private readonly seqNums: Map<EthereumAddress, number>;
+  private bytes: number = 0;
   private count: number = 0;
   private lost: number = 0;
 
@@ -13,7 +14,12 @@ export class Metrics {
     this.seqNums = new Map<EthereumAddress, number>();
   }
 
-  public update(publisherId: EthereumAddress, seqNum: number) {
+  public update(
+    publisherId: EthereumAddress,
+    seqNum: number,
+    bytes: number,
+  ) {
+    this.bytes += bytes;
     this.count++;
     const prevSeqNum = this.seqNums.get(publisherId);
     if (prevSeqNum) {
@@ -38,6 +44,7 @@ export class Metrics {
   public get summary() {
     return {
       subject: this.subject,
+      bytes: this.bytes,
       count: this.count,
       lost: this.lost,
     }
