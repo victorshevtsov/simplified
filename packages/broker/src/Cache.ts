@@ -1,5 +1,5 @@
 import { Confirmation, Measurement, SystemMessage, SystemMessageType } from '@simplified/protocol';
-import { BroadbandPublisher, BroadbandSubscriber, Metrics } from '@simplified/shared';
+import { BroadbandPublisher, BroadbandSubscriber, MessageMetrics } from '@simplified/shared';
 import { Logger } from '@streamr/utils';
 import { EventEmitter } from 'events';
 import { MessageMetadata } from 'streamr-client';
@@ -15,8 +15,8 @@ export class Cache extends EventEmitter {
 		message: SystemMessage;
 		metadata: MessageMetadata;
 	}[] = [];
-	private readonly measurementMetrics: Metrics;
-	private readonly confirmationMetrics: Metrics;
+	private readonly measurementMetrics: MessageMetrics;
+	private readonly confirmationMetrics: MessageMetrics;
 	private metricsTimer?: NodeJS.Timer;
 
 	constructor(
@@ -24,8 +24,8 @@ export class Cache extends EventEmitter {
 		private readonly confirmationPublisher: BroadbandPublisher,
 	) {
 		super();
-		this.measurementMetrics = new Metrics("Measurement");
-		this.confirmationMetrics = new Metrics("Confirmation");
+		this.measurementMetrics = new MessageMetrics("Measurement");
+		this.confirmationMetrics = new MessageMetrics("Confirmation");
 	}
 
 	public async start() {

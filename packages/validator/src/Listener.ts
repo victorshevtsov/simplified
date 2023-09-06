@@ -1,5 +1,5 @@
 import { Confirmation, Measurement, SystemMessage, SystemMessageType } from '@simplified/protocol';
-import { BroadbandSubscriber, Metrics } from '@simplified/shared';
+import { BroadbandSubscriber, MessageMetrics } from '@simplified/shared';
 import { Logger } from '@streamr/utils';
 import { MessageMetadata } from 'streamr-client';
 import { Recovery } from './Recovery';
@@ -9,8 +9,8 @@ const LOG_METRICS_INTERVAL = 10 * 1000;
 const logger = new Logger(module);
 
 export class Listener {
-  private readonly measurementMetrics: Metrics;
-  private readonly confirmationMetrics: Metrics;
+  private readonly measurementMetrics: MessageMetrics;
+  private readonly confirmationMetrics: MessageMetrics;
   private metricsTimer?: NodeJS.Timer;
 
   constructor(
@@ -18,8 +18,8 @@ export class Listener {
     private readonly confirmationSubscriber: BroadbandSubscriber,
     private readonly recovery?: Recovery,
   ) {
-    this.measurementMetrics = new Metrics("Measurement");
-    this.confirmationMetrics = new Metrics("Confirmation");
+    this.measurementMetrics = new MessageMetrics("Measurement");
+    this.confirmationMetrics = new MessageMetrics("Confirmation");
   }
 
   public async start() {

@@ -2,7 +2,7 @@ import { EthereumAddress, Logger } from '@streamr/utils';
 
 const logger = new Logger(module);
 
-export class Metrics {
+export class MessageMetrics {
   private readonly seqNums: Map<EthereumAddress | '', number>;
   private bytes: number = 0;
   private count: number = 0;
