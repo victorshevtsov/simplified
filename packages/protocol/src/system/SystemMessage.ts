@@ -19,6 +19,7 @@ export enum SystemMessageType {
 
 export interface SystemMessageOptions {
 	version?: number;
+	seqNum: number;
 }
 
 export class SystemMessage {
@@ -26,8 +27,13 @@ export class SystemMessage {
 
 	version: number;
 	messageType: SystemMessageType;
+	seqNum: number;
 
-	constructor(version = LATEST_VERSION, messageType: SystemMessageType) {
+	constructor(
+		version = LATEST_VERSION,
+		messageType: SystemMessageType,
+		seqNum: number
+	) {
 		if (new.target === SystemMessage) {
 			throw new TypeError('SystemMessage is abstract.');
 		}
@@ -35,6 +41,7 @@ export class SystemMessage {
 		this.version = version;
 		validateIsInteger('type', messageType);
 		this.messageType = messageType;
+		this.seqNum = seqNum;
 	}
 
 	static registerSerializer(

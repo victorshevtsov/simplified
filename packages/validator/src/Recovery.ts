@@ -64,6 +64,8 @@ export class Recovery {
 	private activityTimeout: ActivityTimeout;
 	private restartTimeout?: NodeJS.Timeout;
 
+	private requestSeqNum: number = 0;
+
 	constructor(
 		private readonly client: StreamrClient,
 		private readonly systemStream: Stream,
@@ -136,7 +138,12 @@ export class Recovery {
 		this.requestId = uuid();
 		const from = this.progress.timestamp || 0;
 		const to = 0;
-		const recoveryRequest = new RecoveryRequest({ requestId: this.requestId, from, to });
+		const recoveryRequest = new RecoveryRequest({
+			seqNum: this.requestSeqNum++,
+			requestId: this.requestId,
+			from,
+			to,
+		});
 
 		logger.info(`Sending RecoveryRequest ${JSON.stringify({
 			requestId: recoveryRequest.requestId,

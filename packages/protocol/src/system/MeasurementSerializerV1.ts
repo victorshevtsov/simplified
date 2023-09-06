@@ -9,20 +9,20 @@ export default class MeasurementSerializerV1 extends Serializer<Measurement> {
 		return [
 			VERSION,
 			SystemMessageType.Measurement,
-			message.sensorId,
 			message.seqNum,
+			message.sensorId,
 			message.pressure,
 			message.temperature
 		];
 	}
 
 	fromArray(arr: any[]): Measurement {
-		const [version, _messageType, sensorId, seqNum, pressure, temperature] = arr;
+		const [version, _messageType, seqNum, sensorId, pressure, temperature] = arr;
 
 		return new Measurement({
 			version,
-			sensorId,
 			seqNum,
+			sensorId,
 			pressure,
 			temperature
 		});

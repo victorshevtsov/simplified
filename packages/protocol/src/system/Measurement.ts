@@ -6,28 +6,25 @@ import {
 
 interface MeasurementOptions extends SystemMessageOptions {
 	sensorId: string;
-	seqNum: number;
 	pressure: number;
 	temperature: number;
 }
 
 export class Measurement extends SystemMessage {
 	sensorId: string;
-	seqNum: number;
 	pressure: number;
 	temperature: number;
 
 	constructor({
 		version = SystemMessage.LATEST_VERSION,
-		sensorId,
 		seqNum,
+		sensorId,
 		pressure,
 		temperature,
 	}: MeasurementOptions) {
-		super(version, SystemMessageType.Measurement);
+		super(version, SystemMessageType.Measurement, seqNum);
 
 		this.sensorId = sensorId;
-		this.seqNum = seqNum;
 		this.pressure = pressure;
 		this.temperature = temperature;
 	}

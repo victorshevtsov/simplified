@@ -6,22 +6,20 @@ import {
 
 interface ConfirmationOptions extends SystemMessageOptions {
 	sensorId: string;
-	seqNum: number;
 	signature: string;
 }
 
 export class Confirmation extends SystemMessage {
 	sensorId: string;
-	seqNum: number;
 	signature: string;
 
 	constructor({
 		version = SystemMessage.LATEST_VERSION,
-		sensorId,
 		seqNum,
+		sensorId,
 		signature,
 	}: ConfirmationOptions) {
-		super(version, SystemMessageType.Confirmation);
+		super(version, SystemMessageType.Confirmation, seqNum);
 
 		this.sensorId = sensorId;
 		this.seqNum = seqNum;

@@ -9,8 +9,8 @@ export default class ConfirmationSerializerV1 extends Serializer<Confirmation> {
 		return [
 			VERSION,
 			SystemMessageType.Confirmation,
-			message.sensorId,
 			message.seqNum,
+			message.sensorId,
 			message.signature,
 		];
 	}
@@ -20,8 +20,8 @@ export default class ConfirmationSerializerV1 extends Serializer<Confirmation> {
 
 		return new Confirmation({
 			version,
-			sensorId,
 			seqNum,
+			sensorId,
 			signature,
 		});
 	}
